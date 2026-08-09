@@ -146,6 +146,13 @@ video {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
+/* Case study hero: stack phone under title on small screens */
+@media (max-width: 900px) {
+  .case-hero-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 /* Case-study process track */
 .process-section {
   padding: clamp(3rem, 8vw, 6rem) clamp(1.5rem, 5vw, 4rem);

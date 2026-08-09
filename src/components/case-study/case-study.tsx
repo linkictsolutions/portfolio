@@ -18,79 +18,113 @@ export function CaseStudy({ project, next }: { project: Project; next: Project }
     target: coverRef,
     offset: ["start start", "end start"],
   });
-  const coverY = useTransform(scrollYProgress, [0, 1], ["0%", "35%"]);
-  const coverScale = useTransform(scrollYProgress, [0, 1], [1, 1.15]);
-  const coverTextY = useTransform(scrollYProgress, [0, 1], ["0%", "-60%"]);
+  const phoneY = useTransform(scrollYProgress, [0, 1], ["0%", "12%"]);
 
   const isMobileProject =
     project.cover.kind === "placeholder"
       ? project.cover.variant !== "desktop"
       : project.cover.device !== "desktop";
 
+  const hasRealCover = project.cover.kind === "image";
+
   return (
     <main style={{ background: "var(--color-paper)", color: "var(--color-ink)" }}>
-      {/* COVER */}
+      {/* COVER — phone framed for real UI; never crush screenshots with giant type */}
       <section
         ref={coverRef}
         style={{
           position: "relative",
-          height: "100svh",
+          minHeight: "100svh",
           overflow: "hidden",
-          background: project.accent,
-          color: project.tone === "dark" ? "#f3efe6" : "#0b0b0d",
+          background: hasRealCover
+            ? `linear-gradient(145deg, ${project.accent}18 0%, var(--color-paper) 42%, ${project.accent}10 100%)`
+            : project.accent,
+          color: "var(--color-ink)",
+          padding: "clamp(5.5rem, 12vw, 7rem) clamp(1.5rem, 5vw, 4rem) clamp(2.5rem, 6vw, 4rem)",
         }}
       >
-        <motion.div style={{ position: "absolute", inset: 0, y: coverY, scale: coverScale, opacity: 0.5 }}>
-          <Media item={project.cover} accent={project.accent} />
-        </motion.div>
-
-        <motion.div
-          style={{
-            position: "relative",
-            zIndex: 1,
-            height: "100%",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "flex-end",
-            padding: "clamp(1.5rem, 5vw, 4rem)",
-            y: coverTextY,
-          }}
-        >
-          <div style={{ maxWidth: 1600, margin: "0 auto", width: "100%" }}>
-            <span className="text-label">{project.tags.join(" · ")}</span>
-            <h1
-              className="text-display"
-              style={{ fontSize: "clamp(3.5rem, 16vw, 16rem)", margin: "1rem 0 0", lineHeight: 0.85 }}
-            >
-              <CoverLine>{project.title}</CoverLine>
-            </h1>
-            <p style={{ maxWidth: 620, marginTop: "1.5rem", fontSize: "clamp(1.1rem, 2vw, 1.6rem)", lineHeight: 1.35 }}>
-              {project.subtitle}
-            </p>
-          </div>
-        </motion.div>
-      </section>
-
-      {/* OVERVIEW / META */}
-      <section style={{ padding: "clamp(4rem, 10vw, 9rem) clamp(1.5rem, 5vw, 4rem)" }}>
         <div
           style={{
             maxWidth: 1600,
             margin: "0 auto",
+            width: "100%",
+            minHeight: "calc(100svh - 8rem)",
             display: "grid",
-            gap: "clamp(2rem, 6vw, 5rem)",
-            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gridTemplateColumns: hasRealCover && isMobileProject ? "minmax(0, 1fr) minmax(240px, 340px)" : "1fr",
+            gap: "clamp(2rem, 5vw, 4rem)",
+            alignItems: "center",
           }}
+          className="case-hero-grid"
         >
-          <div style={{ gridColumn: "1 / -1", maxWidth: 900 }}>
-            <h2 className="text-display" style={{ fontSize: "clamp(1.75rem, 4vw, 3.5rem)", lineHeight: 1.05, margin: 0 }}>
-              <WordReveal text={project.summary} />
-            </h2>
+          <div>
+            <span className="text-label" style={{ color: project.accent }}>
+              {project.tags.join(" · ")}
+            </span>
+            <h1
+              className="text-display"
+              style={{
+                fontSize: hasRealCover
+                  ? "clamp(3rem, 9vw, 7rem)"
+                  : "clamp(3.5rem, 16vw, 16rem)",
+                margin: "1rem 0 0",
+                lineHeight: 0.9,
+              }}
+            >
+              <CoverLine>{project.title}</CoverLine>
+            </h1>
+            <p
+              style={{
+                maxWidth: 520,
+                marginTop: "1.25rem",
+                fontSize: "clamp(1.05rem, 1.8vw, 1.35rem)",
+                lineHeight: 1.4,
+                opacity: 0.8,
+              }}
+            >
+              {project.subtitle}
+            </p>
           </div>
-          <MetaBlock label="Client" value={project.client} />
-          <MetaBlock label="Year" value={project.year} />
-          <MetaBlock label="Role" value={project.role.join(", ")} />
-          <MetaBlock label="Discipline" value={project.tags.join(", ")} />
+
+          {hasRealCover && isMobileProject && (
+            <motion.div style={{ y: phoneY, maxWidth: 340, margin: "0 auto", width: "100%" }}>
+              <PhoneFrame>
+                <Media item={project.cover} accent={project.accent} />
+              </PhoneFrame>
+            </motion.div>
+          )}
+
+          {hasRealCover && !isMobileProject && (
+            <div style={{ gridColumn: "1 / -1", maxWidth: 980, margin: "0 auto", width: "100%" }}>
+              <BrowserFrame>
+                <Media item={project.cover} accent={project.accent} />
+              </BrowserFrame>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* OVERVIEW / META */}
+      <section style={{ padding: "clamp(3rem, 7vw, 6rem) clamp(1.5rem, 5vw, 4rem)" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+          <h2
+            className="text-display"
+            style={{ fontSize: "clamp(1.5rem, 3.2vw, 2.6rem)", lineHeight: 1.15, margin: 0 }}
+          >
+            <WordReveal text={project.summary} />
+          </h2>
+          <div
+            style={{
+              marginTop: "2.5rem",
+              display: "grid",
+              gap: "1.25rem",
+              gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+            }}
+          >
+            <MetaBlock label="Client" value={project.client} />
+            <MetaBlock label="Year" value={project.year} />
+            <MetaBlock label="Role" value={project.role.join(", ")} />
+            <MetaBlock label="Discipline" value={project.tags.join(", ")} />
+          </div>
         </div>
       </section>
 
@@ -189,22 +223,33 @@ export function CaseStudy({ project, next }: { project: Project; next: Project }
               item.kind === "image" ? item.caption : item.kind === "placeholder" ? item.label : undefined;
             return (
               <Reveal key={i} delay={(i % 3) * 0.08}>
-                <figure style={{ margin: 0 }}>
-                  <div
-                    style={{
-                      borderRadius: 16,
-                      overflow: "hidden",
-                      aspectRatio: isMobile ? "9 / 16" : "16 / 11",
-                      background: project.accent,
-                      boxShadow: "0 20px 50px -28px rgba(0,0,0,0.35)",
-                    }}
-                  >
-                    <Media item={item} accent={project.accent} />
-                  </div>
+                <figure style={{ margin: 0, maxWidth: isMobile ? 320 : "100%", marginInline: "auto" }}>
+                  {isMobile ? (
+                    <PhoneFrame>
+                      <Media item={item} accent={project.accent} />
+                    </PhoneFrame>
+                  ) : (
+                    <div
+                      style={{
+                        borderRadius: 16,
+                        overflow: "hidden",
+                        aspectRatio: "16 / 11",
+                        background: project.accent,
+                        boxShadow: "0 20px 50px -28px rgba(0,0,0,0.35)",
+                      }}
+                    >
+                      <Media item={item} accent={project.accent} />
+                    </div>
+                  )}
                   {caption && (
                     <figcaption
                       className="text-label"
-                      style={{ marginTop: "0.75rem", opacity: 0.55, letterSpacing: "0.08em" }}
+                      style={{
+                        marginTop: "0.9rem",
+                        opacity: 0.55,
+                        letterSpacing: "0.08em",
+                        textAlign: "center",
+                      }}
                     >
                       {caption}
                     </figcaption>
