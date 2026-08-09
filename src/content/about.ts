@@ -1,24 +1,24 @@
 export const about = {
   intro:
-    "I'm a product and interaction designer with 8 years turning fuzzy problems into interfaces that feel effortless. I work end-to-end — research, systems, high-fidelity prototypes — but I care most about the moments in between: the transitions, the feedback, the feel.",
+    "I'm Abel Abebaw, a UI/UX designer based in Addis Ababa, Ethiopia. I design digital products end-to-end in Figma — turning research and rough ideas into clean, intuitive, high-fidelity interfaces. I care most about clarity, usability, and the small details that make a product feel effortless.",
   belief:
-    "A screenshot can show what something looks like. Only interaction can show how it feels. So I prototype relentlessly, and I build portfolios that let you touch the work.",
+    "A screenshot shows what a product looks like. Only interaction shows how it truly feels — and that's the part I obsess over.",
   capabilities: [
-    "Product Design",
-    "Interaction & Motion",
-    "Design Systems",
-    "Prototyping",
     "UX Research",
-    "Design Engineering",
-  ],
-  tools: ["Figma", "Framer", "Rive", "Origami", "After Effects", "Cursor"],
-  marquee: [
-    "Interaction Design",
+    "UI Design",
+    "Wireframing",
     "Prototyping",
-    "Motion",
+    "Interaction Design",
     "Design Systems",
-    "Human First",
-    "Playful",
-    "Bold",
+  ],
+  tools: ["Figma"],
+  marquee: [
+    "UI Design",
+    "UX Design",
+    "Prototyping",
+    "Design Systems",
+    "Human-Centered",
+    "Intuitive",
+    "Clean",
   ],
 };

@@ -60,7 +60,7 @@ export function Hero() {
               mixBlendMode: "difference",
             }}
           >
-            <Line delay={0.5}>Design you</Line>
+            <Line delay={0.5}>Interfaces you</Line>
             <Line delay={0.62}>
               can <span style={{ fontStyle: "italic", fontWeight: 500 }}>feel</span>
               <span style={{ color: "var(--color-accent)" }}>.</span>
@@ -83,8 +83,8 @@ export function Hero() {
               transition={{ delay: reduced ? 0 : 1, duration: 1 }}
               style={{ maxWidth: 460, fontSize: "clamp(1rem, 1.4vw, 1.25rem)", lineHeight: 1.5 }}
             >
-              {siteConfig.tagline} I turn static mockups into living, interactive
-              experiences — explore a few below.
+              {siteConfig.tagline} Here the work is shown as living, interactive
+              experiences — not static mockups. Explore a few below.
             </motion.p>
 
             <motion.div

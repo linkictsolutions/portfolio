@@ -10,6 +10,7 @@ import { Media } from "@/components/media";
 import { FigmaEmbed } from "@/components/figma-embed";
 import { PhoneFrame, BrowserFrame } from "@/components/device-frame";
 import { Reveal, WordReveal } from "@/components/reveal";
+import { MedyAppointmentLive } from "@/components/prototypes/medy-appointment-live";
 
 export function CaseStudy({ project, next }: { project: Project; next: Project }) {
   const coverRef = useRef<HTMLDivElement>(null);
@@ -129,7 +130,13 @@ export function CaseStudy({ project, next }: { project: Project; next: Project }
         <div style={{ maxWidth: 1600, margin: "0 auto" }}>
           <span className="text-label" style={{ color: project.accent }}>(Try it yourself)</span>
           <h2 className="text-display" style={{ fontSize: "clamp(2rem, 6vw, 5rem)", margin: "1rem 0 3rem" }}>
-            <WordReveal text="A live prototype — not a picture" />
+            <WordReveal
+              text={
+                project.livePrototype
+                  ? "Touch the interface — not a mockup"
+                  : "A live prototype — not a picture"
+              }
+            />
           </h2>
           <div
             style={{
@@ -137,44 +144,75 @@ export function CaseStudy({ project, next }: { project: Project; next: Project }
               margin: "0 auto",
             }}
           >
-            <FigmaEmbed
-              url={project.figmaEmbedUrl}
-              accent={project.accent}
-              device={isMobileProject ? "mobile" : "desktop"}
-              title={project.title}
-            />
+            {project.livePrototype === "medy-appointment" ? (
+              <MedyAppointmentLive />
+            ) : (
+              <FigmaEmbed
+                url={project.figmaEmbedUrl}
+                accent={project.accent}
+                device={isMobileProject ? "mobile" : "desktop"}
+                title={project.title}
+              />
+            )}
           </div>
           <p style={{ marginTop: "1.5rem", opacity: 0.6, fontSize: "0.95rem" }}>
-            Click to launch the interactive Figma prototype.
+            {project.livePrototype === "medy-appointment"
+              ? "Tap an appointment card — the detail sheet expands. Built in code from the real MedyTic UI."
+              : "Click to launch the interactive Figma prototype."}
           </p>
         </div>
       </section>
 
-      {/* GALLERY */}
+      {/* GALLERY — scroll-expand style with captions */}
       <section style={{ padding: "0 clamp(1.5rem, 5vw, 4rem) clamp(4rem, 10vw, 9rem)" }}>
+        <div style={{ maxWidth: 1600, margin: "0 auto 2rem" }}>
+          <span className="text-label" style={{ color: project.accent }}>(Screens)</span>
+          <h2 className="text-display" style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)", margin: "0.75rem 0 0" }}>
+            <WordReveal text="The product, screen by screen" />
+          </h2>
+        </div>
         <div
           style={{
             maxWidth: 1600,
             margin: "0 auto",
             display: "grid",
-            gap: "clamp(1rem, 2vw, 2rem)",
-            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))",
+            gap: "clamp(1.25rem, 2.5vw, 2.5rem)",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))",
           }}
         >
-          {project.gallery.map((item, i) => (
-            <Reveal key={i} delay={(i % 3) * 0.08}>
-              <div
-                style={{
-                  borderRadius: 16,
-                  overflow: "hidden",
-                  aspectRatio: item.kind === "placeholder" && item.variant === "mobile" ? "320 / 480" : "16 / 11",
-                  background: project.accent,
-                }}
-              >
-                <Media item={item} accent={project.accent} />
-              </div>
-            </Reveal>
-          ))}
+          {project.gallery.map((item, i) => {
+            const isMobile =
+              item.kind === "placeholder"
+                ? item.variant === "mobile"
+                : item.device === "mobile";
+            const caption =
+              item.kind === "image" ? item.caption : item.kind === "placeholder" ? item.label : undefined;
+            return (
+              <Reveal key={i} delay={(i % 3) * 0.08}>
+                <figure style={{ margin: 0 }}>
+                  <div
+                    style={{
+                      borderRadius: 16,
+                      overflow: "hidden",
+                      aspectRatio: isMobile ? "9 / 16" : "16 / 11",
+                      background: project.accent,
+                      boxShadow: "0 20px 50px -28px rgba(0,0,0,0.35)",
+                    }}
+                  >
+                    <Media item={item} accent={project.accent} />
+                  </div>
+                  {caption && (
+                    <figcaption
+                      className="text-label"
+                      style={{ marginTop: "0.75rem", opacity: 0.55, letterSpacing: "0.08em" }}
+                    >
+                      {caption}
+                    </figcaption>
+                  )}
+                </figure>
+              </Reveal>
+            );
+          })}
         </div>
       </section>
 
@@ -211,7 +249,11 @@ export function CaseStudy({ project, next }: { project: Project; next: Project }
                       {asMobile ? <PhoneFrame>{inner}</PhoneFrame> : <BrowserFrame>{inner}</BrowserFrame>}
                     </div>
                     <figcaption className="text-label" style={{ marginTop: "1rem", opacity: 0.6, textAlign: "center" }}>
-                      {item.kind === "video" ? item.label : ""}
+                      {item.kind === "video"
+                        ? item.label
+                        : item.kind === "image"
+                          ? item.caption
+                          : ""}
                     </figcaption>
                   </figure>
                 </Reveal>

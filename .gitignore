@@ -25,3 +25,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Raw design drops (huge Figma SVG exports) — site uses /public/projects copies
+design-drops/**/screens-svg/
+design-drops/**/screens-png/
+design-drops/**/video/

@@ -24,10 +24,10 @@ export default function OpengraphImage() {
           {siteConfig.role}
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ fontSize: 150, fontWeight: 800, lineHeight: 0.9, letterSpacing: -4 }}>
-            Design you
+          <div style={{ fontSize: 140, fontWeight: 800, lineHeight: 0.9, letterSpacing: -4 }}>
+            Interfaces you
           </div>
-          <div style={{ display: "flex", fontSize: 150, fontWeight: 800, lineHeight: 0.9, letterSpacing: -4 }}>
+          <div style={{ display: "flex", fontSize: 140, fontWeight: 800, lineHeight: 0.9, letterSpacing: -4 }}>
             can feel<span style={{ color: "#ff4a1c" }}>.</span>
           </div>
         </div>

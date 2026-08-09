@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { getLenis } from "@/components/smooth-scroll";
 
-const WORDS = ["Concept", "Craft", "Motion", "Ava Mercer"];
+const WORDS = ["Clarity", "Craft", "Interaction", "Abel Abebaw"];
 
 export function IntroLoader() {
   const reduced = useReducedMotion();

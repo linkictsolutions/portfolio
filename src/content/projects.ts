@@ -19,6 +19,7 @@ export type MediaItem =
       src: string;
       alt: string;
       device?: "mobile" | "desktop" | "free";
+      caption?: string;
     }
   | {
       kind: "video";
@@ -62,6 +63,8 @@ export interface Project {
    * Get embed code. Left blank uses an interactive placeholder prototype.
    */
   figmaEmbedUrl?: string;
+  /** When true, case study renders the coded MedyTic live appointment prototype. */
+  livePrototype?: "medy-appointment";
   gallery: MediaItem[];
   interactions: MediaItem[];
   outcomes: Outcome[];
@@ -69,55 +72,176 @@ export interface Project {
 
 export const projects: Project[] = [
   {
+    slug: "medytic",
+    title: "MedyTic",
+    subtitle: "A family-first e-medical companion — appointments, telehealth, and shared care",
+    year: "2026",
+    client: "MedyTic",
+    role: ["UI Design", "UX Flows", "Prototyping", "Design System"],
+    tags: ["Health", "Mobile", "Family Care"],
+    summary:
+      "End-to-end UI/UX for a patient–caregiver health app: family overview, appointments, telehealth, wearables, and shared plans — designed for clarity under real medical complexity.",
+    accent: "#1987EE",
+    tone: "light",
+    cover: {
+      kind: "image",
+      src: "/projects/medytic/overview-family.png",
+      alt: "MedyTic Family Overview",
+      device: "mobile",
+    },
+    hoverPreview: {
+      kind: "image",
+      src: "/projects/medytic/overview-family.png",
+      alt: "MedyTic Family Overview",
+      device: "mobile",
+    },
+    context:
+      "The product owners defined MedyTic as an e-medical platform linking patients to caregivers — appointments, video telehealth, chat, wearable connections, medical file uploads, medication history, and shared family plans (Free, Individual, Family). My job was to turn that brief into a clear, usable mobile experience.",
+    problem:
+      "Health apps often feel dense and single-user. MedyTic needed to serve individuals and families without burying critical actions — booking, monitoring, and joining care — under complexity.",
+    process: [
+      {
+        no: "01",
+        title: "Structure the care journey",
+        body: "Mapped the product into clear hubs: Family Overview as home, Records & Appointments as clinical rhythm, Community/navigation as orientation, Settings for family management — so users always know where they are.",
+      },
+      {
+        no: "02",
+        title: "Design for family + individual modes",
+        body: "Built dual views (Family / Individual) and monitoring screens for children and elderly carers — same system language, different information density based on who you're caring for.",
+      },
+      {
+        no: "03",
+        title: "Make appointments touchable",
+        body: "Appointments use scannable cards with status (upcoming / attended / missed) and expand into a detail sheet with join, reschedule, and calendar actions — the interaction you can try live below.",
+      },
+    ],
+    livePrototype: "medy-appointment",
+    gallery: [
+      {
+        kind: "image",
+        src: "/projects/medytic/overview-family.png",
+        alt: "Family Overview",
+        device: "mobile",
+        caption: "Family Overview — health snapshot across members",
+      },
+      {
+        kind: "image",
+        src: "/projects/medytic/overview-individual.png",
+        alt: "Individual View",
+        device: "mobile",
+        caption: "Individual View — focused member care",
+      },
+      {
+        kind: "image",
+        src: "/projects/medytic/community-hub.png",
+        alt: "Header & Navigation / Community Hub",
+        device: "mobile",
+        caption: "Header & Navigation — community hub orientation",
+      },
+      {
+        kind: "image",
+        src: "/projects/medytic/appointments.png",
+        alt: "Appointments list",
+        device: "mobile",
+        caption: "Appointments — upcoming vs past with status",
+      },
+      {
+        kind: "image",
+        src: "/projects/medytic/appointment-details.png",
+        alt: "Appointment details",
+        device: "mobile",
+        caption: "Appointment detail sheet — join & manage",
+      },
+      {
+        kind: "image",
+        src: "/projects/medytic/monitoring-elderly.png",
+        alt: "Family monitoring",
+        device: "mobile",
+        caption: "Family monitoring — elderly / carer details",
+      },
+      {
+        kind: "image",
+        src: "/projects/medytic/invite-friends.png",
+        alt: "Invite friends",
+        device: "mobile",
+        caption: "Invite & referrals",
+      },
+      {
+        kind: "image",
+        src: "/projects/medytic/family-management.png",
+        alt: "Family management",
+        device: "mobile",
+        caption: "Settings — family management",
+      },
+      {
+        kind: "image",
+        src: "/projects/medytic/add-device.png",
+        alt: "Add device",
+        device: "mobile",
+        caption: "Wearables — add a connected device",
+      },
+      {
+        kind: "image",
+        src: "/projects/medytic/connected-devices.png",
+        alt: "Connected devices",
+        device: "mobile",
+        caption: "Connected devices list",
+      },
+    ],
+    interactions: [
+      {
+        kind: "image",
+        src: "/projects/medytic/appointments.png",
+        alt: "Appointments interaction",
+        device: "mobile",
+        caption: "List → detail expand (try the live prototype above)",
+      },
+      {
+        kind: "image",
+        src: "/projects/medytic/overview-family.png",
+        alt: "Family / Individual toggle",
+        device: "mobile",
+        caption: "Family ↔ Individual view switch",
+      },
+    ],
+    outcomes: [
+      { metric: "Shipped", label: "Live product (~4 months)" },
+      { metric: "100+", label: "Screens designed end-to-end" },
+      { metric: "3", label: "Plans: Free · Individual · Family" },
+    ],
+  },
+  {
     slug: "lumen-banking",
     title: "Lumen",
     subtitle: "A calm banking app that makes money feel human",
     year: "2025",
-    client: "Lumen Financial",
-    role: ["Product Design", "Interaction", "Prototyping"],
-    tags: ["Fintech", "Mobile", "Design System"],
+    client: "Demo placeholder",
+    role: ["Product Design", "Interaction"],
+    tags: ["Fintech", "Mobile", "Demo"],
     summary:
-      "Reimagining mobile banking around emotion and clarity — turning anxiety-inducing numbers into a calm, guided daily ritual.",
+      "Placeholder case study — will be replaced with Abel's next real project.",
     accent: "#3b47ff",
     tone: "dark",
     cover: { kind: "placeholder", variant: "mobile", label: "Lumen", tone: "dark" },
     hoverPreview: { kind: "placeholder", variant: "mobile", label: "Lumen", tone: "dark" },
-    context:
-      "Lumen is a neobank targeting first-time savers. They had strong infrastructure but a cold, spreadsheet-like app that scared new users away in the first week.",
-    problem:
-      "Early churn was driven by anxiety: dense dashboards, jargon, and no sense of progress. People opened the app, felt worse, and left.",
+    context: "Demo content only.",
+    problem: "Demo content only.",
     process: [
-      {
-        no: "01",
-        title: "Reframing the emotion",
-        body: "I ran 12 diary studies and mapped the emotional arc of a payday. The insight: users wanted reassurance, not more data. We designed for the feeling first.",
-      },
-      {
-        no: "02",
-        title: "A calmer information model",
-        body: "Balance became a single confident number with a soft context ring. Everything else collapsed into progressive disclosure, revealed only on intent.",
-      },
-      {
-        no: "03",
-        title: "Motion as reassurance",
-        body: "Micro-interactions confirm every action with gentle physics — a settling coin, a breathing progress ring — so the app feels alive and trustworthy.",
-      },
+      { no: "01", title: "Placeholder", body: "Replace with a real project when assets are ready." },
+      { no: "02", title: "Placeholder", body: "Replace with a real project when assets are ready." },
+      { no: "03", title: "Placeholder", body: "Replace with a real project when assets are ready." },
     ],
-    figmaEmbedUrl: "",
     gallery: [
       { kind: "placeholder", variant: "mobile", label: "Home", tone: "dark" },
       { kind: "placeholder", variant: "mobile", label: "Goals", tone: "light" },
-      { kind: "placeholder", variant: "detail", label: "Settle animation", tone: "dark" },
-      { kind: "placeholder", variant: "mobile", label: "Insights", tone: "light" },
     ],
     interactions: [
-      { kind: "video", src: "", poster: "", label: "Balance breathing ring", device: "mobile" },
-      { kind: "video", src: "", poster: "", label: "Save-to-goal drag", device: "mobile" },
+      { kind: "video", src: "", poster: "", label: "Interaction demo", device: "mobile" },
     ],
     outcomes: [
-      { metric: "-38%", label: "First-week churn" },
-      { metric: "2.4x", label: "Weekly active use" },
-      { metric: "4.8★", label: "App Store rating" },
+      { metric: "—", label: "Coming soon" },
+      { metric: "—", label: "Coming soon" },
     ],
   },
   {
@@ -125,207 +249,31 @@ export const projects: Project[] = [
     title: "Orbit",
     subtitle: "A spatial canvas for teams who think in maps, not lists",
     year: "2025",
-    client: "Orbit Labs",
-    role: ["Product Design", "Design Systems"],
-    tags: ["SaaS", "Desktop", "Productivity"],
-    summary:
-      "A collaborative workspace that replaces endless nested docs with a zoomable, spatial canvas your whole team can navigate.",
+    client: "Demo placeholder",
+    role: ["Product Design"],
+    tags: ["SaaS", "Desktop", "Demo"],
+    summary: "Placeholder case study — will be replaced with Abel's next real project.",
     accent: "#ff4a1c",
     tone: "light",
     cover: { kind: "placeholder", variant: "desktop", label: "Orbit", tone: "light" },
     hoverPreview: { kind: "placeholder", variant: "desktop", label: "Orbit", tone: "light" },
-    context:
-      "Orbit wanted to challenge document-based tools. Their prototype was powerful but overwhelming — users got lost in infinite space.",
-    problem:
-      "Infinite canvases are freeing but disorienting. We needed structure without cages: a way to feel located at every zoom level.",
+    context: "Demo content only.",
+    problem: "Demo content only.",
     process: [
-      {
-        no: "01",
-        title: "Wayfinding first",
-        body: "I designed a persistent minimap and semantic zoom so content changes fidelity as you move — titles at distance, detail up close.",
-      },
-      {
-        no: "02",
-        title: "A gestural language",
-        body: "Every action maps to a spatial gesture. Grouping, linking, and diving in all feel physical and reversible.",
-      },
-      {
-        no: "03",
-        title: "Systemising the chaos",
-        body: "A 60-token design system kept the interface quiet so the user's content could be loud.",
-      },
+      { no: "01", title: "Placeholder", body: "Replace with a real project when assets are ready." },
+      { no: "02", title: "Placeholder", body: "Replace with a real project when assets are ready." },
+      { no: "03", title: "Placeholder", body: "Replace with a real project when assets are ready." },
     ],
-    figmaEmbedUrl: "",
     gallery: [
       { kind: "placeholder", variant: "desktop", label: "Canvas", tone: "light" },
-      { kind: "placeholder", variant: "detail", label: "Semantic zoom", tone: "dark" },
-      { kind: "placeholder", variant: "desktop", label: "Minimap", tone: "light" },
-      { kind: "placeholder", variant: "flow", label: "Zoom flow", tone: "light" },
+      { kind: "placeholder", variant: "detail", label: "Zoom", tone: "dark" },
     ],
     interactions: [
-      { kind: "video", src: "", poster: "", label: "Semantic zoom", device: "desktop" },
-      { kind: "video", src: "", poster: "", label: "Group & link gesture", device: "desktop" },
+      { kind: "video", src: "", poster: "", label: "Interaction demo", device: "desktop" },
     ],
     outcomes: [
-      { metric: "+52%", label: "Task completion" },
-      { metric: "-27%", label: "Time to first map" },
-      { metric: "$6M", label: "Seed raised post-redesign" },
-    ],
-  },
-  {
-    slug: "sprout-health",
-    title: "Sprout",
-    subtitle: "Playful habit-building for kids and the grown-ups who love them",
-    year: "2024",
-    client: "Sprout Health",
-    role: ["Product Design", "Illustration", "Motion"],
-    tags: ["Health", "Mobile", "Playful"],
-    summary:
-      "A family wellness app that turns daily habits into a living garden — where consistency literally grows into something beautiful.",
-    accent: "#12b886",
-    tone: "light",
-    cover: { kind: "placeholder", variant: "mobile", label: "Sprout", tone: "light" },
-    hoverPreview: { kind: "placeholder", variant: "mobile", label: "Sprout", tone: "light" },
-    context:
-      "Sprout helps families build healthy routines together. Existing habit apps felt like chores — spreadsheets with streaks.",
-    problem:
-      "How do you make consistency feel joyful for a 7-year-old and a 37-year-old in the same interface, without patronising either?",
-    process: [
-      {
-        no: "01",
-        title: "One metaphor, two audiences",
-        body: "The garden metaphor rewards kids with visible growth and gives adults a calm, ambient sense of progress. No numbers required.",
-      },
-      {
-        no: "02",
-        title: "Reward through motion",
-        body: "Completing a habit triggers a hand-animated bloom. I designed a spring-based system so each reward feels earned, never repetitive.",
-      },
-      {
-        no: "03",
-        title: "Accessible delight",
-        body: "Every animation has a reduced-motion equivalent, and the palette passes AAA contrast — delight that includes everyone.",
-      },
-    ],
-    figmaEmbedUrl: "",
-    gallery: [
-      { kind: "placeholder", variant: "mobile", label: "Garden", tone: "light" },
-      { kind: "placeholder", variant: "detail", label: "Bloom reward", tone: "light" },
-      { kind: "placeholder", variant: "mobile", label: "Family", tone: "dark" },
-      { kind: "placeholder", variant: "flow", label: "Habit flow", tone: "light" },
-    ],
-    interactions: [
-      { kind: "video", src: "", poster: "", label: "Bloom reward", device: "mobile" },
-      { kind: "video", src: "", poster: "", label: "Streak celebration", device: "mobile" },
-    ],
-    outcomes: [
-      { metric: "71%", label: "30-day retention" },
-      { metric: "3.1", label: "Habits per family / day" },
-      { metric: "Webby", label: "Nominee, Health 2024" },
-    ],
-  },
-  {
-    slug: "arc-commerce",
-    title: "Arc",
-    subtitle: "A checkout so fast it feels like cheating",
-    year: "2024",
-    client: "Arc Commerce",
-    role: ["Interaction Design", "Prototyping"],
-    tags: ["E-commerce", "Web", "Conversion"],
-    summary:
-      "Rebuilding a multi-step checkout into a single fluid surface — cutting friction, drop-off, and doubt in one motion-led redesign.",
-    accent: "#ffd028",
-    tone: "dark",
-    cover: { kind: "placeholder", variant: "desktop", label: "Arc", tone: "dark" },
-    hoverPreview: { kind: "placeholder", variant: "desktop", label: "Arc", tone: "dark" },
-    context:
-      "Arc powers checkout for 400+ independent brands. Their funnel bled users at every one of five steps.",
-    problem:
-      "Each page reload was a moment of doubt. We needed to compress five screens into one continuous, confidence-building flow.",
-    process: [
-      {
-        no: "01",
-        title: "Collapsing the funnel",
-        body: "I prototyped a single-surface checkout where sections expand in place. No reloads, no lost context, always one clear next step.",
-      },
-      {
-        no: "02",
-        title: "Choreographing trust",
-        body: "Motion guides the eye to exactly the right field, and success states resolve instantly — the interface never leaves you guessing.",
-      },
-      {
-        no: "03",
-        title: "Prototype-driven testing",
-        body: "High-fidelity Figma prototypes let us A/B the motion itself before a line of code shipped.",
-      },
-    ],
-    figmaEmbedUrl: "",
-    gallery: [
-      { kind: "placeholder", variant: "desktop", label: "Checkout", tone: "dark" },
-      { kind: "placeholder", variant: "detail", label: "Inline expand", tone: "light" },
-      { kind: "placeholder", variant: "flow", label: "Single-surface flow", tone: "dark" },
-      { kind: "placeholder", variant: "desktop", label: "Success", tone: "light" },
-    ],
-    interactions: [
-      { kind: "video", src: "", poster: "", label: "Section expand", device: "desktop" },
-      { kind: "video", src: "", poster: "", label: "Pay success", device: "desktop" },
-    ],
-    outcomes: [
-      { metric: "+19%", label: "Checkout conversion" },
-      { metric: "-44%", label: "Step drop-off" },
-      { metric: "9s", label: "Median checkout time" },
-    ],
-  },
-  {
-    slug: "field-notes",
-    title: "Field Notes",
-    subtitle: "A field-research tool designed to disappear",
-    year: "2024",
-    client: "Meridian Research",
-    role: ["Product Design", "Research"],
-    tags: ["Enterprise", "Tablet", "Data"],
-    summary:
-      "An offline-first data capture tool for researchers in the field — designed to get out of the way in harsh, high-stakes conditions.",
-    accent: "#ff8fb1",
-    tone: "light",
-    cover: { kind: "placeholder", variant: "detail", label: "Field Notes", tone: "light" },
-    hoverPreview: { kind: "placeholder", variant: "detail", label: "Field Notes", tone: "light" },
-    context:
-      "Meridian's researchers capture data in remote locations — bright sun, gloves, no signal. Their old tool assumed a comfortable desk.",
-    problem:
-      "The interface failed exactly where it mattered: glare, fat-finger errors, and lost work when connectivity dropped.",
-    process: [
-      {
-        no: "01",
-        title: "Designing for the worst case",
-        body: "I designed a high-contrast, large-target UI tested with gloves in direct sunlight, and an offline-first sync model that never loses a keystroke.",
-      },
-      {
-        no: "02",
-        title: "One-handed everything",
-        body: "Core capture actions live within thumb reach. Voice and quick-tags cut data entry time dramatically.",
-      },
-      {
-        no: "03",
-        title: "Quiet confidence",
-        body: "A persistent, honest sync status means researchers always trust their data is safe — the single most requested outcome.",
-      },
-    ],
-    figmaEmbedUrl: "",
-    gallery: [
-      { kind: "placeholder", variant: "desktop", label: "Capture", tone: "light" },
-      { kind: "placeholder", variant: "detail", label: "Sync status", tone: "dark" },
-      { kind: "placeholder", variant: "flow", label: "Offline flow", tone: "light" },
-      { kind: "placeholder", variant: "desktop", label: "Review", tone: "light" },
-    ],
-    interactions: [
-      { kind: "video", src: "", poster: "", label: "Quick capture", device: "desktop" },
-      { kind: "video", src: "", poster: "", label: "Offline sync", device: "desktop" },
-    ],
-    outcomes: [
-      { metric: "-61%", label: "Data-entry time" },
-      { metric: "0", label: "Records lost in pilot" },
-      { metric: "100%", label: "Researcher adoption" },
+      { metric: "—", label: "Coming soon" },
+      { metric: "—", label: "Coming soon" },
     ],
   },
 ];
