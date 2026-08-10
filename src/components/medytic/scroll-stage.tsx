@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { PhoneFrame, type PhoneFinish } from "@/components/device-frame";
+import { getLenis } from "@/components/smooth-scroll";
 import { medyAccent, medyBrief, medyStageScreens } from "@/content/medytic";
 
 const AUTO_MS = 3200;
@@ -16,18 +17,37 @@ const STAGE_FINISHES: PhoneFinish[] = [
 ];
 const CUE_LETTERS = "SCROLL TO SEE MORE".split("");
 
-/** Pinned scroll stage: scrub explores; idle auto-advances with screen motion. */
+/** Pinned stage: idle auto-scrolls through screens once, then user continues. */
 export function MedyScrollStage() {
   const sectionRef = useRef<HTMLElement>(null);
-  const modeRef = useRef<"scroll" | "auto">("auto");
+  const stRef = useRef<ScrollTrigger | null>(null);
+  const modeRef = useRef<"auto" | "manual">("auto");
   const indexRef = useRef(0);
   const [index, setIndex] = useState(0);
   const [pinned, setPinned] = useState(false);
   const [dir, setDir] = useState<1 | -1>(1);
+  const [autoDone, setAutoDone] = useState(false);
   const reduced = useReducedMotion();
   const screens = medyStageScreens;
+  const n = screens.length;
 
   indexRef.current = index;
+
+  const scrollToProgress = (progress: number, duration = 0.95) => {
+    const st = stRef.current;
+    if (!st) return;
+    const p = Math.max(0, Math.min(1, progress));
+    const y = st.start + (st.end - st.start) * p;
+    const lenis = getLenis();
+    if (lenis) lenis.scrollTo(y, { duration, immediate: false });
+    else window.scrollTo({ top: y, behavior: "smooth" });
+  };
+
+  const progressForIndex = (i: number) => {
+    // Land mid-segment so the screen reads clearly while pinned
+    if (n <= 1) return 0;
+    return Math.min(0.999, (i + 0.55) / n);
+  };
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -35,79 +55,97 @@ export function MedyScrollStage() {
 
     gsap.registerPlugin(ScrollTrigger);
 
-    const bumpScroll = () => {
-      modeRef.current = "scroll";
-    };
-
     const ctx = gsap.context(() => {
-      ScrollTrigger.create({
+      const st = ScrollTrigger.create({
         trigger: section,
         start: "top top",
-        end: () => `+=${screens.length * 70}%`,
+        end: () => `+=${n * 70}%`,
         pin: true,
         scrub: 0.65,
-        onToggle: (self) => setPinned(self.isActive),
+        onToggle: (self) => {
+          setPinned(self.isActive);
+          if (!self.isActive && self.direction === -1) {
+            // Scrolled back above the stage — allow auto again on re-entry
+            setAutoDone(false);
+            modeRef.current = "auto";
+          }
+        },
         onUpdate: (self) => {
-          if (modeRef.current !== "scroll") return;
-          const i = Math.min(
-            screens.length - 1,
-            Math.floor(self.progress * screens.length),
-          );
+          const i = Math.min(n - 1, Math.floor(self.progress * n));
           setIndex((prev) => {
             if (i !== prev) setDir(i > prev ? 1 : -1);
             return i;
           });
+          if (self.progress >= 0.985) setAutoDone(true);
         },
       });
+      stRef.current = st;
     }, section);
 
-    window.addEventListener("wheel", bumpScroll, { passive: true });
-    window.addEventListener("touchmove", bumpScroll, { passive: true });
     const onScroll = () => ScrollTrigger.update();
     window.addEventListener("lenis-scroll", onScroll);
     ScrollTrigger.refresh();
 
     return () => {
-      window.removeEventListener("wheel", bumpScroll);
-      window.removeEventListener("touchmove", bumpScroll);
       window.removeEventListener("lenis-scroll", onScroll);
+      stRef.current = null;
       ctx.revert();
     };
-  }, [screens.length, reduced]);
+  }, [n, reduced]);
 
-  // After idle, auto-advance screens while pinned
+  // Idle auto-scroll advances real page scroll through the pin — once, no loop
   useEffect(() => {
-    if (!pinned || reduced) return;
+    if (!pinned || reduced || autoDone) return;
 
-    const armAuto = () => {
-      modeRef.current = "auto";
-    };
-    const onInteract = () => {
-      modeRef.current = "scroll";
+    const pauseManual = () => {
+      modeRef.current = "manual";
       window.clearTimeout(idle);
-      idle = window.setTimeout(armAuto, AUTO_MS);
+      idle = window.setTimeout(() => {
+        if (!autoDone) modeRef.current = "auto";
+      }, AUTO_MS);
     };
 
-    let idle = window.setTimeout(armAuto, AUTO_MS);
-    window.addEventListener("wheel", onInteract, { passive: true });
-    window.addEventListener("touchmove", onInteract, { passive: true });
+    let idle = window.setTimeout(() => {
+      modeRef.current = "auto";
+    }, 900);
+
+    window.addEventListener("wheel", pauseManual, { passive: true });
+    window.addEventListener("touchmove", pauseManual, { passive: true });
+    window.addEventListener("keydown", pauseManual);
 
     const tick = window.setInterval(() => {
       if (modeRef.current !== "auto") return;
-      setIndex((prev) => {
-        const next = prev >= screens.length - 1 ? 0 : prev + 1;
-        setDir(next >= prev || (prev === screens.length - 1 && next === 0) ? 1 : -1);
-        return next;
-      });
+      const st = stRef.current;
+      if (!st || !st.isActive) return;
+
+      const current = Math.min(n - 1, Math.floor(st.progress * n));
+      if (current >= n - 1 || st.progress >= 0.985) {
+        setAutoDone(true);
+        modeRef.current = "manual";
+        // Ease to the pin end so the next user scroll leaves the section
+        scrollToProgress(1, 0.7);
+        return;
+      }
+
+      scrollToProgress(progressForIndex(current + 1), 1.05);
     }, AUTO_MS);
 
     return () => {
       window.clearTimeout(idle);
       window.clearInterval(tick);
-      window.removeEventListener("wheel", onInteract);
-      window.removeEventListener("touchmove", onInteract);
+      window.removeEventListener("wheel", pauseManual);
+      window.removeEventListener("touchmove", pauseManual);
+      window.removeEventListener("keydown", pauseManual);
     };
-  }, [pinned, reduced, screens.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- helpers are stable over pin session
+  }, [pinned, reduced, autoDone, n]);
+
+  const goToScreen = (i: number) => {
+    modeRef.current = "manual";
+    setDir(i >= indexRef.current ? 1 : -1);
+    scrollToProgress(progressForIndex(i), 0.85);
+    if (i >= n - 1) setAutoDone(true);
+  };
 
   const screen = screens[index]!;
   const finish = STAGE_FINISHES[index % STAGE_FINISHES.length]!;
@@ -262,7 +300,11 @@ export function MedyScrollStage() {
             >
               {(index + 1).toString().padStart(2, "0")} /{" "}
               {screens.length.toString().padStart(2, "0")}
-              {pinned ? "  ·  scroll or wait" : ""}
+              {pinned
+                ? autoDone
+                  ? "  ·  keep scrolling"
+                  : "  ·  auto-scrolling"
+                : ""}
             </div>
 
             <AnimatePresence mode="wait" initial={false}>
@@ -317,11 +359,7 @@ export function MedyScrollStage() {
                   type="button"
                   aria-label={`Show ${s.label}`}
                   data-cursor="hover"
-                  onClick={() => {
-                    modeRef.current = "scroll";
-                    setDir(i >= indexRef.current ? 1 : -1);
-                    setIndex(i);
-                  }}
+                  onClick={() => goToScreen(i)}
                   style={{
                     height: 4,
                     width: i === index ? 36 : 14,
