@@ -15,16 +15,16 @@ import { medyAccent, medyScreens, type MedyScreen } from "@/content/medytic";
 const REEL = medyScreens.filter((s) => s.fit !== "panel");
 const PHONE_W = 275;
 /** Cruise speed while auto-drifting (px / second) */
-const AUTO_SPEED = 48;
+const AUTO_SPEED = 78;
 /** How quickly speed eases toward target (higher = snappier) */
-const SPEED_SMOOTH = 3.2;
+const SPEED_SMOOTH = 4;
 /** Wheel / drag glide friction per second */
 const GLIDE_FRICTION = 3.8;
 
 /**
  * Decision reel:
- * — Larger proportional phones; auto-scrolls left on enter; pauses on hover
- * — Click expands; expanded prev/next slides with direction
+ * — Auto-drifts while in view (does not stop on hover)
+ * — Click expands; expanded prev/next push-slides by direction
  */
 export function MedyExpandGallery() {
   const reduced = useReducedMotion();
@@ -33,7 +33,7 @@ export function MedyExpandGallery() {
   const focusRef = useRef(0);
   const expandedRef = useRef(false);
   const inViewRef = useRef(false);
-  /** false while pointer is over the reel — auto speed eases to 0 */
+  /** Auto-drift stays on while section is in view — hover does not stop it */
   const wantAutoRef = useRef(true);
   const speedRef = useRef(0);
   const glideRef = useRef(0);
@@ -46,6 +46,7 @@ export function MedyExpandGallery() {
 
   focusRef.current = focus;
   expandedRef.current = expanded !== null;
+  wantAutoRef.current = !expanded;
 
   const syncFocus = useCallback((track: HTMLElement) => {
     const center = track.scrollLeft + track.clientWidth / 2;
@@ -74,8 +75,6 @@ export function MedyExpandGallery() {
     );
     if (!el) return;
 
-    wantAutoRef.current = false;
-    setPointerIn(true);
     setFocus(next);
     focusRef.current = next;
     glideRef.current = 0;
@@ -87,7 +86,7 @@ export function MedyExpandGallery() {
     );
   }, []);
 
-  // Unified motion loop: soft auto-drift, soft stop, and inertial manual glide
+  // Unified motion loop: auto-drift + optional wheel glide (hover never kills cruise)
   useEffect(() => {
     if (reduced) return;
     const section = sectionRef.current;
@@ -105,23 +104,14 @@ export function MedyExpandGallery() {
     const onWheel = (e: WheelEvent) => {
       if (expandedRef.current) return;
       e.preventDefault();
-
-      // Only hand control to the user after pointer enter (or arrows already paused)
-      if (wantAutoRef.current) return;
-
       targetLeftRef.current = null;
-      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-      // Impulse — then friction eases it out (no step-snap)
-      glideRef.current += delta * 1.15;
-      glideRef.current = Math.max(-2200, Math.min(2200, glideRef.current));
-    };
-
-    const onTouchMove = (e: TouchEvent) => {
-      if (wantAutoRef.current && !expandedRef.current) e.preventDefault();
+      const delta =
+        Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      glideRef.current += delta * 1.25;
+      glideRef.current = Math.max(-2400, Math.min(2400, glideRef.current));
     };
 
     track.addEventListener("wheel", onWheel, { passive: false });
-    track.addEventListener("touchmove", onTouchMove, { passive: false });
 
     let raf = 0;
     let last = performance.now();
@@ -136,17 +126,11 @@ export function MedyExpandGallery() {
       const max = el.scrollWidth - el.clientWidth;
       if (max <= 0) return;
 
-      // Ease auto cruise speed toward target (soft stop / soft start)
       const cruise =
-        wantAutoRef.current &&
-        inViewRef.current &&
-        !expandedRef.current
-          ? AUTO_SPEED
-          : 0;
+        wantAutoRef.current && inViewRef.current ? AUTO_SPEED : 0;
       const k = 1 - Math.exp(-SPEED_SMOOTH * dt);
       speedRef.current += (cruise - speedRef.current) * k;
 
-      // Arrow / dot target — ease scrollLeft toward it
       if (targetLeftRef.current !== null) {
         const target = targetLeftRef.current;
         const dist = target - el.scrollLeft;
@@ -160,7 +144,6 @@ export function MedyExpandGallery() {
         return;
       }
 
-      // Manual wheel glide with exponential friction
       const friction = Math.exp(-GLIDE_FRICTION * dt);
       glideRef.current *= friction;
       if (Math.abs(glideRef.current) < 2) glideRef.current = 0;
@@ -171,7 +154,7 @@ export function MedyExpandGallery() {
       }
 
       let next = el.scrollLeft + dx;
-      if (next >= max - 0.5) next = wantAutoRef.current ? 0 : max;
+      if (next >= max - 0.5) next = cruise > 0 ? 0 : max;
       if (next < 0) next = 0;
       el.scrollLeft = next;
       syncFocus(el);
@@ -182,21 +165,9 @@ export function MedyExpandGallery() {
       io.disconnect();
       cancelAnimationFrame(raf);
       track.removeEventListener("wheel", onWheel);
-      track.removeEventListener("touchmove", onTouchMove);
     };
   }, [reduced, syncFocus]);
 
-  function pauseDrift() {
-    wantAutoRef.current = false;
-    setPointerIn(true);
-  }
-
-  function resumeDrift() {
-    wantAutoRef.current = true;
-    glideRef.current = 0;
-    targetLeftRef.current = null;
-    setPointerIn(false);
-  }
   useEffect(() => {
     if (!expanded) return;
     const onKey = (e: KeyboardEvent) => {
@@ -278,7 +249,7 @@ export function MedyExpandGallery() {
                 lineHeight: 1.4,
               }}
             >
-              Auto-drifts gently when you arrive — hover to take over. Click a phone to expand.
+              Auto-drifts while in view. Scroll the strip anytime, or click a phone to expand.
             </p>
           </div>
 
@@ -547,32 +518,27 @@ export function MedyExpandGallery() {
                 color: "#f3efe6",
               }}
             >
-              <div style={{ position: "relative" }}>
-                <AnimatePresence mode="wait" initial={false}>
+              <div style={{ position: "relative", overflow: "visible" }}>
+                <AnimatePresence mode="wait" initial={false} custom={expandDir}>
                   <motion.div
                     key={expanded.id}
+                    custom={expandDir}
                     initial={
                       reduced
                         ? { opacity: 0 }
-                        : {
-                            opacity: 0,
-                            scale: 0.96,
-                            y: expandDir * 12,
-                          }
+                        : { opacity: 0, x: expandDir * 72 }
                     }
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    animate={{ opacity: 1, x: 0 }}
                     exit={
                       reduced
                         ? { opacity: 0 }
-                        : {
-                            opacity: 0,
-                            scale: 0.98,
-                            y: expandDir * -10,
-                          }
+                        : { opacity: 0, x: expandDir * -64 }
                     }
                     transition={{
-                      duration: 0.34,
-                      ease: [0.22, 1, 0.36, 1],
+                      type: "spring",
+                      stiffness: 340,
+                      damping: 34,
+                      mass: 0.85,
                     }}
                   >
                     <PhoneFrame finish="black-metal" screenBg="#f3f4f6">
@@ -593,19 +559,20 @@ export function MedyExpandGallery() {
                 </AnimatePresence>
               </div>
 
-              <AnimatePresence mode="wait" initial={false}>
+              <AnimatePresence mode="wait" initial={false} custom={expandDir}>
                 <motion.div
                   key={`${expanded.id}-copy`}
+                  custom={expandDir}
                   initial={
                     reduced
                       ? { opacity: 0 }
-                      : { opacity: 0, y: expandDir * 8 }
+                      : { opacity: 0, x: expandDir * 28 }
                   }
-                  animate={{ opacity: 1, y: 0 }}
+                  animate={{ opacity: 1, x: 0 }}
                   exit={
                     reduced
                       ? { opacity: 0 }
-                      : { opacity: 0, y: expandDir * -6 }
+                      : { opacity: 0, x: expandDir * -22 }
                   }
                   transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
                 >
