@@ -65,16 +65,14 @@ export function MedyScrollStage() {
         overflow: "hidden",
       }}
     >
-      {/* Atmosphere — tighter glow so stage feels fuller */}
       <div
         aria-hidden
         style={{
           position: "absolute",
           inset: "-10%",
           background: `
-            radial-gradient(ellipse 55% 50% at 70% 45%, ${medyAccent}40, transparent 58%),
-            radial-gradient(ellipse 40% 40% at 15% 60%, #12C84928, transparent 55%),
-            radial-gradient(ellipse 35% 30% at 50% 0%, #7b3cff20, transparent 50%)
+            radial-gradient(ellipse 45% 40% at 78% 42%, ${medyAccent}32, transparent 58%),
+            radial-gradient(ellipse 35% 35% at 18% 70%, #12C84918, transparent 55%)
           `,
           pointerEvents: "none",
         }}
@@ -84,71 +82,111 @@ export function MedyScrollStage() {
         style={{
           position: "relative",
           zIndex: 1,
-          maxWidth: 1480,
+          maxWidth: 1400,
           margin: "0 auto",
           minHeight: "100svh",
-          padding: "clamp(4.5rem, 8vw, 5.5rem) clamp(1.25rem, 3vw, 2.5rem) clamp(1.25rem, 3vw, 2rem)",
+          padding: "clamp(5rem, 9vw, 6rem) clamp(1.5rem, 4vw, 3.5rem) clamp(2rem, 4vw, 3rem)",
           display: "grid",
-          gridTemplateColumns: "minmax(0, 0.85fr) minmax(300px, 460px)",
-          gap: "clamp(1.25rem, 3vw, 2.5rem)",
+          gridTemplateColumns: "minmax(0, 1.15fr) minmax(220px, 300px)",
+          gap: "clamp(2rem, 5vw, 4rem)",
           alignItems: "center",
         }}
         className="medy-stage-grid"
       >
-        <div style={{ maxWidth: 520 }}>
-          <p className="text-label" style={{ color: medyAccent, marginBottom: "0.75rem" }}>
-            {medyBrief.tags.join(" · ")} · {medyBrief.year}
-          </p>
-          <h1
-            className="text-display"
-            style={{ fontSize: "clamp(2.75rem, 8vw, 6.25rem)", margin: 0, lineHeight: 0.9 }}
-          >
-            {medyBrief.title}
-            <span style={{ color: medyAccent }}>.</span>
-          </h1>
-          <p
-            style={{
-              marginTop: "1rem",
-              fontSize: "clamp(1rem, 1.7vw, 1.3rem)",
-              lineHeight: 1.35,
-              opacity: 0.88,
-            }}
-          >
-            {medyBrief.subtitle}
-          </p>
-          <p
-            style={{
-              marginTop: "1rem",
-              fontSize: "0.95rem",
-              lineHeight: 1.5,
-              opacity: 0.62,
-            }}
-          >
-            {medyBrief.line}
-          </p>
+        {/* Left: type fills the space — phone stays proportional */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            minHeight: "min(72svh, 640px)",
+            gap: "clamp(1.25rem, 3vw, 2rem)",
+          }}
+        >
+          <div>
+            <p className="text-label" style={{ color: medyAccent, marginBottom: "1rem" }}>
+              {medyBrief.tags.join(" · ")} · {medyBrief.year}
+            </p>
+            <h1
+              className="text-display"
+              style={{ fontSize: "clamp(3.25rem, 9vw, 7rem)", margin: 0, lineHeight: 0.9 }}
+            >
+              {medyBrief.title}
+              <span style={{ color: medyAccent }}>.</span>
+            </h1>
+            <p
+              style={{
+                marginTop: "1.25rem",
+                fontSize: "clamp(1.15rem, 2vw, 1.55rem)",
+                lineHeight: 1.35,
+                maxWidth: 34ch,
+                opacity: 0.9,
+              }}
+            >
+              {medyBrief.subtitle}
+            </p>
+            <p
+              style={{
+                marginTop: "1.1rem",
+                fontSize: "clamp(0.98rem, 1.3vw, 1.1rem)",
+                lineHeight: 1.55,
+                maxWidth: 42ch,
+                opacity: 0.58,
+              }}
+            >
+              {medyBrief.line}
+            </p>
+          </div>
 
-          <div style={{ marginTop: "1.75rem" }}>
-            <div className="text-label" style={{ opacity: 0.45, marginBottom: 8 }}>
+          <div
+            style={{
+              marginTop: "auto",
+              paddingTop: "1.5rem",
+              borderTop: "1px solid rgba(243,239,230,0.12)",
+            }}
+          >
+            <div
+              className="text-label"
+              style={{ opacity: 0.4, marginBottom: 10, letterSpacing: "0.16em" }}
+            >
               {(index + 1).toString().padStart(2, "0")} /{" "}
               {screens.length.toString().padStart(2, "0")}
-              {pinned ? " · scroll" : ""}
+              {pinned ? "  ·  scroll to explore" : ""}
             </div>
+
             <div
               key={screen.id}
               style={{
-                borderLeft: `3px solid ${medyAccent}`,
-                paddingLeft: 14,
+                display: "grid",
+                gap: "0.35rem",
               }}
             >
-              <div className="text-display" style={{ fontSize: "clamp(1.35rem, 2.8vw, 1.9rem)" }}>
+              <div
+                className="text-display"
+                style={{
+                  fontSize: "clamp(1.75rem, 3.5vw, 2.75rem)",
+                  lineHeight: 1.05,
+                  borderLeft: `3px solid ${medyAccent}`,
+                  paddingLeft: 16,
+                }}
+              >
                 {screen.label}
               </div>
-              <p style={{ margin: "0.45rem 0 0", opacity: 0.7, fontSize: "0.95rem", lineHeight: 1.45 }}>
+              <p
+                style={{
+                  margin: 0,
+                  paddingLeft: 19,
+                  opacity: 0.68,
+                  fontSize: "clamp(1rem, 1.4vw, 1.15rem)",
+                  lineHeight: 1.45,
+                  maxWidth: 40ch,
+                }}
+              >
                 {screen.caption}
               </p>
             </div>
 
-            <div style={{ display: "flex", gap: 6, marginTop: 18, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 7, marginTop: 22, flexWrap: "wrap" }}>
               {screens.map((s, i) => (
                 <button
                   key={s.id}
@@ -157,25 +195,33 @@ export function MedyScrollStage() {
                   data-cursor="hover"
                   onClick={() => setIndex(i)}
                   style={{
-                    height: 3,
-                    width: i === index ? 28 : 12,
+                    height: 4,
+                    width: i === index ? 36 : 14,
                     borderRadius: 999,
                     padding: 0,
                     border: "none",
-                    background: i === index ? medyAccent : "rgba(243,239,230,0.22)",
+                    background: i === index ? medyAccent : "rgba(243,239,230,0.2)",
                     transition: "width 0.35s var(--ease-out-expo), background 0.35s",
                     cursor: "pointer",
                   }}
                 />
               ))}
             </div>
+
+            <p
+              className="text-label"
+              style={{ marginTop: 18, opacity: 0.35, letterSpacing: "0.14em" }}
+            >
+              {medyBrief.role}
+            </p>
           </div>
         </div>
 
+        {/* Right: smaller, fully visible device */}
         <div
           style={{
             width: "100%",
-            maxWidth: 460,
+            maxWidth: 300,
             margin: "0 auto",
             position: "relative",
           }}

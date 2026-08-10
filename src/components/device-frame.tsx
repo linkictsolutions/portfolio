@@ -21,25 +21,24 @@ export function PhoneFrame({
 }: PhoneFrameProps) {
   const shellBg = metallic
     ? `linear-gradient(
-        145deg,
-        #f2f2f4 0%,
-        #c8c8d0 12%,
-        #8e8e98 28%,
-        #e6e6ea 42%,
-        #5c5c66 58%,
-        #d4d4dc 72%,
-        #9a9aa4 86%,
-        #ececf0 100%
+        150deg,
+        #3a3a42 0%,
+        #1a1a1f 18%,
+        #0a0a0c 34%,
+        #2e2e36 48%,
+        #121216 62%,
+        #404048 78%,
+        #16161c 100%
       )`
     : "linear-gradient(160deg, #2a2a30, #0a0a0c)";
 
   const shellShadow = metallic
     ? `
-      0 50px 90px -28px rgba(0,0,0,0.75),
-      0 0 0 1px rgba(255,255,255,0.35),
-      0 0 40px -8px rgba(255,255,255,0.12),
-      inset 0 1px 0 rgba(255,255,255,0.75),
-      inset 0 -2px 4px rgba(0,0,0,0.35)
+      0 40px 80px -24px rgba(0,0,0,0.7),
+      0 0 0 1px rgba(255,255,255,0.22),
+      0 0 28px -6px rgba(25,135,238,0.25),
+      inset 0 1px 0 rgba(255,255,255,0.28),
+      inset 0 -1px 3px rgba(0,0,0,0.55)
     `
     : "0 40px 80px -30px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.06)";
 
@@ -56,31 +55,44 @@ export function PhoneFrame({
         width: "100%",
       }}
     >
-      {/* Specular shine streak */}
+      {/* Edge highlight + thin specular streak (black metal) */}
       {metallic && (
-        <div
-          aria-hidden
-          style={{
-            position: "absolute",
-            inset: 0,
-            borderRadius: 44,
-            pointerEvents: "none",
-            zIndex: 3,
-            background: `
-              linear-gradient(
-                115deg,
-                transparent 0%,
-                transparent 38%,
-                rgba(255,255,255,0.55) 46%,
-                rgba(255,255,255,0.08) 52%,
-                transparent 62%,
-                transparent 100%
-              )
-            `,
-            mixBlendMode: "soft-light",
-            opacity: 0.85,
-          }}
-        />
+        <>
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: 44,
+              pointerEvents: "none",
+              zIndex: 3,
+              boxShadow:
+                "inset 0 0 0 1px rgba(255,255,255,0.14), inset 1px 0 0 rgba(255,255,255,0.08)",
+            }}
+          />
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: 44,
+              pointerEvents: "none",
+              zIndex: 3,
+              background: `
+                linear-gradient(
+                  118deg,
+                  transparent 0%,
+                  transparent 42%,
+                  rgba(255,255,255,0.38) 48%,
+                  rgba(255,255,255,0.05) 51%,
+                  transparent 58%,
+                  transparent 100%
+                )
+              `,
+              opacity: 0.7,
+            }}
+          />
+        </>
       )}
 
       <div
@@ -92,11 +104,9 @@ export function PhoneFrame({
           width: 92,
           height: 22,
           borderRadius: 999,
-          background: metallic
-            ? "linear-gradient(180deg, #2a2a30, #0a0a0c)"
-            : "#0a0a0c",
+          background: "#050507",
           boxShadow: metallic
-            ? "inset 0 1px 2px rgba(0,0,0,0.6), 0 0.5px 0 rgba(255,255,255,0.25)"
+            ? "inset 0 1px 2px rgba(0,0,0,0.8), 0 0.5px 0 rgba(255,255,255,0.15)"
             : undefined,
           zIndex: 4,
         }}
@@ -110,7 +120,7 @@ export function PhoneFrame({
           overflow: "hidden",
           background: "#000",
           boxShadow: metallic
-            ? "inset 0 0 0 1px rgba(0,0,0,0.35)"
+            ? "inset 0 0 0 1px rgba(255,255,255,0.06)"
             : undefined,
         }}
       >
