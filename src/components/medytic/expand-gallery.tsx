@@ -5,73 +5,85 @@ import {
   useEffect,
   useRef,
   useState,
-  type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from "react";
-import {
-  AnimatePresence,
-  motion,
-  useReducedMotion,
-} from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { PhoneFrame } from "@/components/device-frame";
-import {
-  medyAccent,
-  medyScreens,
-  type MedyScreen,
-} from "@/content/medytic";
+import { medyAccent, medyScreens, type MedyScreen } from "@/content/medytic";
+
+/** Phone screens only — appointment detail is a modal panel, shown in Appointments. */
+const REEL = medyScreens.filter((s) => s.fit !== "panel");
 
 /**
- * Decision reel — not a dead equal grid.
- * Horizontal snap focus + expand stage. Phone exports stay in devices;
- * panel exports (appointment detail) render as cards so proportions hold.
+ * Decision reel (fixed):
+ * — Drag / arrows / dots browse the strip (caption follows)
+ * — One click on a phone opens the expand stage
+ * — No fake phone shell, no y-shift, no scrollIntoView page jumps
  */
 export function MedyExpandGallery() {
   const reduced = useReducedMotion();
   const trackRef = useRef<HTMLDivElement>(null);
+  const scrollingRef = useRef(false);
   const [focus, setFocus] = useState(0);
   const [expanded, setExpanded] = useState<MedyScreen | null>(null);
 
-  const go = useCallback((index: number) => {
-    const next = Math.max(0, Math.min(medyScreens.length - 1, index));
-    setFocus(next);
-    const el = trackRef.current?.querySelector<HTMLElement>(
-      `[data-reel-index="${next}"]`,
-    );
-    el?.scrollIntoView({
-      behavior: reduced ? "auto" : "smooth",
-      inline: "center",
-      block: "nearest",
-    });
-  }, [reduced]);
+  const scrollToIndex = useCallback(
+    (index: number) => {
+      const track = trackRef.current;
+      if (!track) return;
+      const next = Math.max(0, Math.min(REEL.length - 1, index));
+      const el = track.querySelector<HTMLElement>(
+        `[data-reel-index="${next}"]`,
+      );
+      if (!el) return;
 
-  // Sync focus from scroll position
+      scrollingRef.current = true;
+      setFocus(next);
+
+      const left =
+        el.offsetLeft - (track.clientWidth / 2 - el.offsetWidth / 2);
+      track.scrollTo({
+        left: Math.max(0, left),
+        behavior: reduced ? "auto" : "smooth",
+      });
+
+      window.setTimeout(() => {
+        scrollingRef.current = false;
+      }, reduced ? 50 : 450);
+    },
+    [reduced],
+  );
+
+  // Focus follows horizontal scroll (ignore while we drive scroll programmatically)
   useEffect(() => {
     const track = trackRef.current;
     if (!track) return;
 
-    const slides = Array.from(
-      track.querySelectorAll<HTMLElement>("[data-reel-index]"),
-    );
-    if (!slides.length) return;
-
-    const io = new IntersectionObserver(
-      (entries) => {
-        let best: { idx: number; ratio: number } | null = null;
-        for (const e of entries) {
-          if (!e.isIntersecting) continue;
-          const idx = Number(e.target.getAttribute("data-reel-index"));
-          if (Number.isNaN(idx)) continue;
-          if (!best || e.intersectionRatio > best.ratio) {
-            best = { idx, ratio: e.intersectionRatio };
+    let raf = 0;
+    const onScroll = () => {
+      if (scrollingRef.current) return;
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const center = track.scrollLeft + track.clientWidth / 2;
+        let best = 0;
+        let bestDist = Infinity;
+        track.querySelectorAll<HTMLElement>("[data-reel-index]").forEach((el) => {
+          const mid = el.offsetLeft + el.offsetWidth / 2;
+          const d = Math.abs(mid - center);
+          if (d < bestDist) {
+            bestDist = d;
+            best = Number(el.dataset.reelIndex);
           }
-        }
-        if (best) setFocus(best.idx);
-      },
-      { root: track, threshold: [0.35, 0.55, 0.75] },
-    );
+        });
+        setFocus(best);
+      });
+    };
 
-    slides.forEach((s) => io.observe(s));
-    return () => io.disconnect();
+    track.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      track.removeEventListener("scroll", onScroll);
+    };
   }, []);
 
   useEffect(() => {
@@ -79,12 +91,12 @@ export function MedyExpandGallery() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setExpanded(null);
       if (e.key === "ArrowRight") {
-        const i = medyScreens.findIndex((s) => s.id === expanded.id);
-        if (i < medyScreens.length - 1) setExpanded(medyScreens[i + 1]!);
+        const i = REEL.findIndex((s) => s.id === expanded.id);
+        if (i < REEL.length - 1) setExpanded(REEL[i + 1]!);
       }
       if (e.key === "ArrowLeft") {
-        const i = medyScreens.findIndex((s) => s.id === expanded.id);
-        if (i > 0) setExpanded(medyScreens[i - 1]!);
+        const i = REEL.findIndex((s) => s.id === expanded.id);
+        if (i > 0) setExpanded(REEL[i - 1]!);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -96,22 +108,7 @@ export function MedyExpandGallery() {
     };
   }, [expanded]);
 
-  const active = medyScreens[focus]!;
-
-  function onRailKey(e: ReactKeyboardEvent) {
-    if (e.key === "ArrowRight") {
-      e.preventDefault();
-      go(focus + 1);
-    }
-    if (e.key === "ArrowLeft") {
-      e.preventDefault();
-      go(focus - 1);
-    }
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      setExpanded(active);
-    }
-  }
+  const active = REEL[focus]!;
 
   return (
     <section
@@ -122,7 +119,6 @@ export function MedyExpandGallery() {
           var(--color-paper)
         `,
         color: "var(--color-ink)",
-        overflow: "hidden",
       }}
     >
       <div
@@ -157,23 +153,33 @@ export function MedyExpandGallery() {
               <br />
               Expand a decision.
             </h2>
+            <p
+              style={{
+                marginTop: 12,
+                maxWidth: 420,
+                opacity: 0.55,
+                fontSize: "0.9rem",
+                lineHeight: 1.45,
+              }}
+            >
+              Scroll the strip or use the arrows. Click any phone to expand it.
+            </p>
           </div>
 
           <AnimatePresence mode="wait">
             <motion.div
               key={active.id}
-              initial={reduced ? false : { opacity: 0, y: 10 }}
+              initial={reduced ? false : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={reduced ? undefined : { opacity: 0, y: -8 }}
-              transition={{ duration: 0.3 }}
+              exit={reduced ? undefined : { opacity: 0 }}
+              transition={{ duration: 0.25 }}
             >
               <div
                 className="text-label"
                 style={{ opacity: 0.45, marginBottom: 8 }}
               >
                 {(focus + 1).toString().padStart(2, "0")} /{" "}
-                {medyScreens.length.toString().padStart(2, "0")}
-                {active.fit === "panel" ? " · Panel" : " · Screen"}
+                {REEL.length.toString().padStart(2, "0")}
               </div>
               <h3
                 className="text-display"
@@ -200,10 +206,9 @@ export function MedyExpandGallery() {
           </AnimatePresence>
         </div>
 
-        {/* Controls */}
         <div
           style={{
-            marginTop: "1.5rem",
+            marginTop: "1.35rem",
             display: "flex",
             alignItems: "center",
             gap: 10,
@@ -211,39 +216,18 @@ export function MedyExpandGallery() {
         >
           <RailButton
             label="Previous screen"
-            onClick={() => go(focus - 1)}
+            onClick={() => scrollToIndex(focus - 1)}
             disabled={focus === 0}
           >
             ←
           </RailButton>
           <RailButton
             label="Next screen"
-            onClick={() => go(focus + 1)}
-            disabled={focus === medyScreens.length - 1}
+            onClick={() => scrollToIndex(focus + 1)}
+            disabled={focus === REEL.length - 1}
           >
             →
           </RailButton>
-          <button
-            type="button"
-            data-cursor="view"
-            data-cursor-label="Expand"
-            onClick={() => setExpanded(active)}
-            style={{
-              marginLeft: 6,
-              border: `1.5px solid ${medyAccent}`,
-              background: `${medyAccent}14`,
-              color: "var(--color-ink)",
-              borderRadius: 999,
-              padding: "10px 16px",
-              fontWeight: 700,
-              fontSize: 12,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              cursor: "pointer",
-            }}
-          >
-            Expand
-          </button>
 
           <div
             style={{
@@ -252,15 +236,14 @@ export function MedyExpandGallery() {
               gap: 6,
               flexWrap: "wrap",
               justifyContent: "flex-end",
-              maxWidth: 220,
             }}
             aria-hidden
           >
-            {medyScreens.map((s, i) => (
+            {REEL.map((s, i) => (
               <button
                 key={s.id}
                 type="button"
-                onClick={() => go(i)}
+                onClick={() => scrollToIndex(i)}
                 style={{
                   width: i === focus ? 18 : 7,
                   height: 7,
@@ -277,111 +260,70 @@ export function MedyExpandGallery() {
         </div>
       </div>
 
-      {/* Filmstrip */}
       <div
         ref={trackRef}
-        role="listbox"
-        aria-label="MedyTic screens"
-        tabIndex={0}
-        onKeyDown={onRailKey}
         className="medy-reel"
         style={{
           marginTop: "1.75rem",
           display: "flex",
+          alignItems: "flex-end",
           gap: "clamp(1rem, 2.5vw, 1.75rem)",
           overflowX: "auto",
-          overflowY: "hidden",
+          overflowY: "visible",
           scrollSnapType: "x mandatory",
-          scrollPaddingInline: "max(1.25rem, calc(50vw - 600px + 1.25rem))",
-          paddingInline: "max(1.25rem, calc(50vw - 600px + 1.25rem))",
-          paddingBottom: "1.5rem",
-          outline: "none",
+          scrollPaddingInline: "max(1.25rem, calc((100vw - 220px) / 2))",
+          paddingInline: "max(1.25rem, calc((100vw - 220px) / 2))",
+          paddingTop: 12,
+          paddingBottom: 28,
           WebkitOverflowScrolling: "touch",
         }}
       >
-        {medyScreens.map((s, i) => {
+        {REEL.map((s, i) => {
           const isFocus = i === focus;
-          const isPanel = s.fit === "panel";
           return (
-            <motion.button
+            <button
               key={s.id}
               type="button"
-              role="option"
-              aria-selected={isFocus}
               data-reel-index={i}
               data-cursor="view"
               data-cursor-label="Expand"
+              aria-label={`Expand ${s.label}`}
               onClick={() => {
-                if (isFocus) setExpanded(s);
-                else go(i);
+                setFocus(i);
+                setExpanded(s);
               }}
-              onFocus={() => go(i)}
-              animate={
-                reduced
-                  ? undefined
-                  : {
-                      scale: isFocus ? 1 : 0.9,
-                      opacity: isFocus ? 1 : 0.45,
-                      y: isFocus ? 0 : 10,
-                    }
-              }
-              transition={{ type: "spring", stiffness: 280, damping: 28 }}
               style={{
                 flex: "0 0 auto",
-                width: isPanel ? 280 : 220,
+                width: 220,
                 scrollSnapAlign: "center",
                 border: "none",
                 background: "transparent",
                 padding: 0,
                 cursor: "pointer",
                 textAlign: "left",
+                opacity: isFocus ? 1 : 0.5,
+                transform: isFocus ? "scale(1)" : "scale(0.92)",
                 transformOrigin: "center bottom",
+                transition: "opacity 0.35s ease, transform 0.35s ease",
               }}
             >
-              {isPanel ? (
-                <div
+              <PhoneFrame finish="black-metal" screenBg="#f3f4f6">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={s.src}
+                  alt={s.label}
+                  loading="lazy"
+                  draggable={false}
                   style={{
-                    borderRadius: 20,
-                    padding: 10,
-                    background: "linear-gradient(160deg, #2a2a30, #0a0a0c)",
-                    boxShadow:
-                      "0 28px 50px -24px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.12)",
-                    aspectRatio: "320 / 660",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    objectPosition: "top center",
+                    display: "block",
+                    pointerEvents: "none",
                   }}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={s.src}
-                    alt={s.label}
-                    loading="lazy"
-                    style={{
-                      width: "100%",
-                      borderRadius: 14,
-                      display: "block",
-                      boxShadow: "0 12px 28px rgba(0,0,0,0.35)",
-                    }}
-                  />
-                </div>
-              ) : (
-                <PhoneFrame finish="black-metal" screenBg="#f3f4f6">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={s.src}
-                    alt={s.label}
-                    loading="lazy"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      objectPosition: "top center",
-                      display: "block",
-                    }}
-                  />
-                </PhoneFrame>
-              )}
+                />
+              </PhoneFrame>
               <div
                 className="text-label"
                 style={{
@@ -392,12 +334,11 @@ export function MedyExpandGallery() {
               >
                 {(i + 1).toString().padStart(2, "0")} · {s.label}
               </div>
-            </motion.button>
+            </button>
           );
         })}
       </div>
 
-      {/* Expand stage */}
       <AnimatePresence>
         {expanded && (
           <motion.div
@@ -409,7 +350,7 @@ export function MedyExpandGallery() {
             style={{
               position: "fixed",
               inset: 0,
-              zIndex: 90,
+              zIndex: 200,
               background: "rgba(7, 10, 18, 0.94)",
               display: "flex",
               alignItems: "center",
@@ -431,59 +372,38 @@ export function MedyExpandGallery() {
             />
 
             <motion.div
-              initial={reduced ? false : { opacity: 0, scale: 0.92, y: 24 }}
+              initial={reduced ? false : { opacity: 0, scale: 0.92, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={reduced ? undefined : { opacity: 0, scale: 0.96, y: 12 }}
-              transition={{ type: "spring", stiffness: 280, damping: 26 }}
+              exit={reduced ? undefined : { opacity: 0, scale: 0.96 }}
+              transition={{ type: "spring", stiffness: 300, damping: 28 }}
               className="medy-lightbox"
               onClick={(e) => e.stopPropagation()}
               style={{
                 position: "relative",
-                zIndex: 91,
+                zIndex: 201,
                 display: "grid",
-                gridTemplateColumns:
-                  expanded.fit === "panel"
-                    ? "minmax(280px, 480px) minmax(0, 320px)"
-                    : "minmax(240px, 320px) minmax(0, 340px)",
+                gridTemplateColumns: "minmax(240px, 320px) minmax(0, 340px)",
                 gap: "clamp(1.5rem, 4vw, 3rem)",
                 alignItems: "center",
-                maxWidth: 920,
+                maxWidth: 860,
                 width: "100%",
                 color: "#f3efe6",
               }}
             >
-              {expanded.fit === "panel" ? (
-                <div
+              <PhoneFrame finish="black-metal" screenBg="#f3f4f6">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={expanded.src}
+                  alt={expanded.label}
                   style={{
-                    borderRadius: 22,
-                    overflow: "hidden",
-                    background: "#eaf7ff",
-                    boxShadow: "0 40px 80px rgba(0,0,0,0.45)",
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    objectPosition: "top center",
+                    display: "block",
                   }}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={expanded.src}
-                    alt={expanded.label}
-                    style={{ width: "100%", display: "block" }}
-                  />
-                </div>
-              ) : (
-                <PhoneFrame finish="black-metal" screenBg="#f3f4f6">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={expanded.src}
-                    alt={expanded.label}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      objectPosition: "top center",
-                      display: "block",
-                    }}
-                  />
-                </PhoneFrame>
-              )}
+                />
+              </PhoneFrame>
 
               <div>
                 <p className="text-label" style={{ color: medyAccent }}>
@@ -521,26 +441,21 @@ export function MedyExpandGallery() {
                 >
                   <RailButton
                     label="Previous"
-                    onClick={() => {
-                      const i = medyScreens.findIndex(
-                        (s) => s.id === expanded.id,
-                      );
-                      if (i > 0) setExpanded(medyScreens[i - 1]!);
-                    }}
                     light
+                    onClick={() => {
+                      const i = REEL.findIndex((s) => s.id === expanded.id);
+                      if (i > 0) setExpanded(REEL[i - 1]!);
+                    }}
                   >
                     ←
                   </RailButton>
                   <RailButton
                     label="Next"
-                    onClick={() => {
-                      const i = medyScreens.findIndex(
-                        (s) => s.id === expanded.id,
-                      );
-                      if (i < medyScreens.length - 1)
-                        setExpanded(medyScreens[i + 1]!);
-                    }}
                     light
+                    onClick={() => {
+                      const i = REEL.findIndex((s) => s.id === expanded.id);
+                      if (i < REEL.length - 1) setExpanded(REEL[i + 1]!);
+                    }}
                   >
                     →
                   </RailButton>
@@ -548,18 +463,18 @@ export function MedyExpandGallery() {
                     type="button"
                     data-cursor="hover"
                     onClick={() => setExpanded(null)}
+                    aria-label="Close"
                     style={{
                       marginLeft: 4,
                       border: "none",
                       background: "transparent",
-                      color: "rgba(243,239,230,0.7)",
-                      fontWeight: 700,
-                      fontSize: 22,
+                      color: "#f3efe6",
+                      fontWeight: 500,
+                      fontSize: 28,
                       lineHeight: 1,
                       cursor: "pointer",
                       padding: "4px 8px",
                     }}
-                    aria-label="Close"
                   >
                     ×
                   </button>
