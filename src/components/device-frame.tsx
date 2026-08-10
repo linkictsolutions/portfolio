@@ -20,12 +20,12 @@ type PhoneFrameProps = {
 function deviceGeometry(device: PhoneDevice) {
   switch (device) {
     case "galaxy-s23":
-      // Shorter than Ultra — wider relative to height so it can scale larger in-frame
+      // Wider / shorter than Ultra — reads larger without eating vertical space
       return {
-        aspect: "9 / 19.5",
-        radius: 32,
-        screenRadius: 24,
-        padding: 9,
+        aspect: "9 / 17.5",
+        radius: 30,
+        screenRadius: 22,
+        padding: 10,
         punchHole: true,
       };
     case "s23-ultra":
@@ -157,6 +157,7 @@ export function PhoneFrame({
         width: "100%",
       }}
     >
+      {/* Shine ONLY on the bezel/edge — masked out of the screen */}
       {showShine && (
         <>
           <div
@@ -167,10 +168,13 @@ export function PhoneFrame({
               borderRadius: shell.radius,
               pointerEvents: "none",
               zIndex: 3,
-              boxShadow:
-                resolvedFinish === "burgundy"
-                  ? "inset 0 0 0 1px rgba(255,210,220,0.22), inset 1px 0 0 rgba(255,200,210,0.12)"
-                  : "inset 0 0 0 1px rgba(255,255,255,0.14), inset 1px 0 0 rgba(255,255,255,0.08)",
+              padding: shell.padding,
+              background: shell.shine!,
+              opacity: resolvedFinish === "burgundy" ? 0.95 : 0.75,
+              WebkitMask:
+                "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+              WebkitMaskComposite: "xor",
+              maskComposite: "exclude",
             }}
           />
           <div
@@ -181,8 +185,10 @@ export function PhoneFrame({
               borderRadius: shell.radius,
               pointerEvents: "none",
               zIndex: 3,
-              background: shell.shine!,
-              opacity: resolvedFinish === "burgundy" ? 0.9 : 0.7,
+              boxShadow:
+                resolvedFinish === "burgundy"
+                  ? "inset 0 0 0 1px rgba(255,210,220,0.28), inset 1px 0 0 rgba(255,200,210,0.16)"
+                  : "inset 0 0 0 1px rgba(255,255,255,0.18), inset 1px 0 0 rgba(255,255,255,0.1)",
             }}
           />
           {resolvedFinish === "burgundy" && (
@@ -190,16 +196,16 @@ export function PhoneFrame({
               aria-hidden
               style={{
                 position: "absolute",
-                top: "8%",
-                bottom: "8%",
-                left: 2,
-                width: 3,
+                top: "10%",
+                bottom: "10%",
+                left: 1,
+                width: Math.max(2, shell.padding - 2),
                 borderRadius: 999,
                 background:
-                  "linear-gradient(180deg, transparent, rgba(255,220,230,0.55), transparent)",
+                  "linear-gradient(180deg, transparent, rgba(255,220,230,0.65), transparent)",
                 zIndex: 3,
                 pointerEvents: "none",
-                opacity: 0.7,
+                opacity: 0.85,
               }}
             />
           )}

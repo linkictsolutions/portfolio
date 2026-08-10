@@ -228,7 +228,7 @@ export function MedyScrollStage() {
             position: "relative",
           }}
         >
-          <div style={{ width: "100%", maxWidth: 320 }}>
+          <div style={{ width: "100%", maxWidth: 360 }}>
             <PhoneFrame
               device="galaxy-s23"
               finish="burgundy"
