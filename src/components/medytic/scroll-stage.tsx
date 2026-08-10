@@ -424,15 +424,16 @@ export function MedyScrollStage() {
         </div>
 
         <div
+          className="medy-stage-device"
           style={{
             width: "100%",
-            display: "flex",
+            display: "grid",
+            gridTemplateColumns: "minmax(0, 360px) minmax(56px, 1fr)",
             justifyContent: "center",
             alignItems: "center",
+            columnGap: 0,
             position: "relative",
-            overflow: "visible",
             minHeight: "min(72svh, 680px)",
-            gap: 14,
           }}
         >
           <div
@@ -440,6 +441,7 @@ export function MedyScrollStage() {
               position: "relative",
               width: "100%",
               maxWidth: 360,
+              justifySelf: "end",
               aspectRatio: "9 / 17.5",
               overflow: "hidden",
             }}
@@ -487,70 +489,96 @@ export function MedyScrollStage() {
             </AnimatePresence>
           </div>
 
-          {/* Vertical progress — tracks pin scroll across slides */}
+          {/* Progress column — centered in space between phone and right edge */}
           <div
-            className="medy-stage-rail"
-            aria-hidden
+            className="medy-stage-rail-wrap"
             style={{
-              position: "relative",
-              flexShrink: 0,
-              width: 3,
-              alignSelf: "stretch",
-              maxHeight: "min(72svh, 680px)",
-              marginBlock: "auto",
-              borderRadius: 999,
-              background: "rgba(243,239,230,0.12)",
-              overflow: "visible",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              height: "100%",
+              minHeight: "min(62svh, 560px)",
+              paddingInline: "clamp(0.5rem, 2vw, 1.25rem)",
             }}
           >
-            <motion.div
+            <div
+              className="medy-stage-rail"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(progress * 100)}
+              aria-label="Stage scroll progress"
               style={{
-                position: "absolute",
-                left: 0,
-                right: 0,
-                top: 0,
-                height: `${Math.max(2, progress * 100)}%`,
+                position: "relative",
+                width: 4,
+                height: "min(62svh, 560px)",
                 borderRadius: 999,
-                background: medyAccent,
-                boxShadow: `0 0 18px ${medyAccent}88`,
+                background: "rgba(243,239,230,0.18)",
+                boxShadow: "inset 0 0 0 1px rgba(243,239,230,0.08)",
+                overflow: "visible",
               }}
-              transition={{ type: "tween", duration: 0.12, ease: "linear" }}
-            />
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  height: `${Math.max(4, progress * 100)}%`,
+                  borderRadius: 999,
+                  background: `linear-gradient(180deg, ${medyAccent}, #5ab0ff)`,
+                  boxShadow: `0 0 16px ${medyAccent}aa`,
+                  transition: "height 0.08s linear",
+                }}
+              />
 
-            {screens.map((s, i) => {
-              const top = n <= 1 ? 0 : ((i + 0.5) / n) * 100;
-              const reached = progress >= (i + 0.05) / n;
-              const active = i === index;
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  aria-label={`Jump to ${s.label}`}
-                  data-cursor="hover"
-                  onClick={() => goToScreen(i)}
-                  style={{
-                    position: "absolute",
-                    left: "50%",
-                    top: `${top}%`,
-                    transform: "translate(-50%, -50%)",
-                    width: active ? 11 : 7,
-                    height: active ? 11 : 7,
-                    borderRadius: 999,
-                    padding: 0,
-                    border: active
-                      ? `2px solid ${medyAccent}`
-                      : "1px solid rgba(243,239,230,0.35)",
-                    background: reached || active ? medyAccent : "#07080c",
-                    cursor: "pointer",
-                    transition:
-                      "width 0.25s, height 0.25s, background 0.25s, border 0.25s",
-                    boxShadow: active
-                      ? `0 0 0 3px rgba(7,8,12,0.9), 0 0 12px ${medyAccent}66`
-                      : undefined,
-                  }}
-                />
-              );
-            })}
+              {/* Traveling thumb so progress is obvious mid-segment */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: "50%",
+                  top: `${Math.max(2, Math.min(98, progress * 100))}%`,
+                  transform: "translate(-50%, -50%)",
+                  width: 14,
+                  height: 14,
+                  borderRadius: 999,
+                  background: "#f3efe6",
+                  border: `2px solid ${medyAccent}`,
+                  boxShadow: `0 0 0 3px rgba(7,8,12,0.85), 0 0 18px ${medyAccent}99`,
+                  transition: "top 0.08s linear",
+                  zIndex: 2,
+                }}
+              />
+
+              {screens.map((s, i) => {
+                const top = n <= 1 ? 0 : (i / Math.max(1, n - 1)) * 100;
+                const reached = progress >= i / Math.max(1, n - 1) - 0.01;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    aria-label={`Jump to ${s.label}`}
+                    data-cursor="hover"
+                    onClick={() => goToScreen(i)}
+                    title={s.label}
+                    style={{
+                      position: "absolute",
+                      left: "50%",
+                      top: `${top}%`,
+                      transform: "translate(-50%, -50%)",
+                      width: 8,
+                      height: 8,
+                      borderRadius: 999,
+                      padding: 0,
+                      border: "1px solid rgba(243,239,230,0.45)",
+                      background: reached ? medyAccent : "rgba(7,8,12,0.95)",
+                      cursor: "pointer",
+                      zIndex: 1,
+                    }}
+                  />
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
