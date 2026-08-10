@@ -447,21 +447,21 @@ export function MedyAppointmentSystem() {
                           onClick={() => setSelected(null)}
                           style={{
                             position: "absolute",
-                            top: 8,
+                            top: 6,
                             right: 8,
                             zIndex: 2,
                             width: 28,
                             height: 28,
-                            borderRadius: 999,
                             border: "none",
+                            padding: 0,
                             display: "grid",
                             placeItems: "center",
-                            background: "rgba(11,18,32,0.72)",
-                            color: "#fff",
-                            fontSize: 16,
+                            background: "transparent",
+                            color: "#0b0b0d",
+                            fontSize: 22,
+                            fontWeight: 500,
                             lineHeight: 1,
                             cursor: "pointer",
-                            backdropFilter: "blur(6px)",
                           }}
                         >
                           ×
