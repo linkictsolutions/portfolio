@@ -92,7 +92,8 @@ export function MedyAppointmentSystem() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "minmax(0, 1fr) minmax(240px, 300px)",
+            // Copy | phone band — phone centers between text and right edge
+            gridTemplateColumns: "minmax(0, 1.05fr) minmax(280px, 1fr)",
             gap: "clamp(1.5rem, 4vw, 3rem)",
             alignItems: "start",
           }}
@@ -315,16 +316,17 @@ export function MedyAppointmentSystem() {
             </div>
           </div>
 
-          {/* Single device — fixed in column; modal is absolute inside the screen */}
+          {/* Single device — centered in the band between copy and right edge */}
           <div
             style={{
               width: "100%",
-              maxWidth: 300,
-              margin: "0 auto",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "flex-start",
               alignSelf: "start",
-              position: "relative",
             }}
           >
+            <div style={{ width: "100%", maxWidth: 330 }}>
             <PhoneFrame finish="black-metal">
               <div
                 style={{
@@ -496,6 +498,7 @@ export function MedyAppointmentSystem() {
             >
               {open ? "Detail open" : "Pick a ticket or tap a card"}
             </p>
+            </div>
           </div>
         </div>
       </div>
