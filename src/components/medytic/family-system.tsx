@@ -41,7 +41,7 @@ export function MedyFamilySystem() {
           margin: "0 auto",
           display: "grid",
           // Phone band | text — phone centers in the left band
-          gridTemplateColumns: "minmax(300px, 1.15fr) minmax(0, 0.95fr)",
+          gridTemplateColumns: "minmax(280px, 1.1fr) minmax(0, 1fr)",
           gap: "clamp(1.25rem, 3vw, 2.5rem)",
           alignItems: "center",
         }}
@@ -54,7 +54,7 @@ export function MedyFamilySystem() {
             alignItems: "center",
           }}
         >
-          <div style={{ width: "100%", maxWidth: 380 }}>
+          <div style={{ width: "100%", maxWidth: 340 }}>
             <PhoneFrame finish="black-metal">
               <AnimatePresence mode="wait">
                 <motion.img

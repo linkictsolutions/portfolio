@@ -168,23 +168,9 @@ video {
 @media (max-width: 900px) {
   .medy-stage-grid,
   .medy-split,
+  .medy-appt-grid,
   .medy-lightbox {
     grid-template-columns: 1fr !important;
-  }
-  .medy-appt-desktop {
-    display: none !important;
-  }
-  .medy-appt-mobile {
-    display: block !important;
-  }
-}
-
-@media (min-width: 901px) {
-  .medy-appt-desktop {
-    display: grid !important;
-  }
-  .medy-appt-mobile {
-    display: none !important;
   }
 }
 
