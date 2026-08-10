@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { projects, getProject, getAdjacentProject } from "@/content/projects";
 import { CaseStudy } from "@/components/case-study/case-study";
+import { MedyticExperience } from "@/components/medytic/medytic-experience";
 
 export function generateStaticParams() {
   return projects.map((p) => ({ slug: p.slug }));
@@ -35,6 +36,10 @@ export default async function WorkPage({
   if (!project) notFound();
 
   const next = getAdjacentProject(slug);
+
+  if (slug === "medytic") {
+    return <MedyticExperience next={next} />;
+  }
 
   return <CaseStudy project={project} next={next} />;
 }

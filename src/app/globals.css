@@ -153,6 +153,41 @@ video {
   }
 }
 
+/* MedyTic hard rebuild — responsive stages */
+@keyframes medyFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(1.02);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (max-width: 900px) {
+  .medy-stage-grid,
+  .medy-split,
+  .medy-lightbox {
+    grid-template-columns: 1fr !important;
+  }
+  .medy-appt-desktop {
+    display: none !important;
+  }
+  .medy-appt-mobile {
+    display: block !important;
+  }
+}
+
+@media (min-width: 901px) {
+  .medy-appt-desktop {
+    display: grid !important;
+  }
+  .medy-appt-mobile {
+    display: none !important;
+  }
+}
+
 /* Case-study process track */
 .process-section {
   padding: clamp(3rem, 8vw, 6rem) clamp(1.5rem, 5vw, 4rem);
