@@ -232,8 +232,12 @@ export function MedyScrollStage() {
             <PhoneFrame
               device="galaxy-s23"
               finish="burgundy"
-              cropBottom={0.14}
+              screenBg="#f3f4f6"
             >
+              {/*
+                Width-locked, natural height: short exports (Add Device) keep
+                aspect + status bar; tall scroll captures clip at the bottom.
+              */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 key={screen.src}
@@ -241,9 +245,7 @@ export function MedyScrollStage() {
                 alt={screen.label}
                 style={{
                   width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  objectPosition: "top center",
+                  height: "auto",
                   display: "block",
                   animation: "medyFadeIn 0.45s var(--ease-out-expo)",
                 }}

@@ -10,6 +10,8 @@ type PhoneFrameProps = {
   metallic?: boolean;
   device?: PhoneDevice;
   finish?: PhoneFinish;
+  /** Screen well color (shows behind contain-fit images). */
+  screenBg?: string;
   /**
    * Crop the bottom of screen content (hides in-app bottom nav bars).
    * Value is how much extra image height to push past the clip (e.g. 0.14 = ~14%).
@@ -24,7 +26,7 @@ function deviceGeometry(device: PhoneDevice) {
       return {
         aspect: "9 / 17.5",
         radius: 30,
-        screenRadius: 22,
+        screenRadius: 20,
         padding: 10,
         punchHole: true,
       };
@@ -137,6 +139,7 @@ export function PhoneFrame({
   metallic = false,
   device = "iphone",
   finish,
+  screenBg = "#000",
   cropBottom = 0,
 }: PhoneFrameProps) {
   const resolvedFinish: PhoneFinish =
@@ -212,21 +215,25 @@ export function PhoneFrame({
         </>
       )}
 
-      {/* Camera: Android punch-hole vs iPhone island */}
+      {/* Camera: Android punch-hole — scales with frame width (~real S23 proportion) */}
       {shell.punchHole ? (
         <div
           aria-hidden
           style={{
             position: "absolute",
-            top: 12,
+            // Centered in the status-bar band of the display (inside bezel)
+            top: `calc(${shell.padding}px + 1.6%)`,
             left: "50%",
             transform: "translateX(-50%)",
-            width: 10,
-            height: 10,
+            width: "5.4%",
+            aspectRatio: "1",
             borderRadius: 999,
-            background: "radial-gradient(circle at 35% 35%, #2a2a30, #050507 70%)",
+            background:
+              "radial-gradient(circle at 32% 30%, #4a4a52 0%, #1a1a1e 45%, #050507 75%)",
             boxShadow:
-              "0 0 0 1.5px rgba(0,0,0,0.55), 0 0 0 2.5px rgba(255,200,210,0.12)",
+              resolvedFinish === "burgundy"
+                ? "0 0 0 2px rgba(20,8,12,0.9), 0 0 0 3.5px rgba(255,200,210,0.22)"
+                : "0 0 0 2px rgba(0,0,0,0.7), 0 0 0 3px rgba(255,255,255,0.1)",
             zIndex: 5,
           }}
         />
@@ -257,7 +264,7 @@ export function PhoneFrame({
           width: "100%",
           borderRadius: shell.screenRadius,
           overflow: "hidden",
-          background: "#000",
+          background: screenBg,
           boxShadow:
             resolvedFinish !== "matte"
               ? "inset 0 0 0 1px rgba(255,255,255,0.06)"
