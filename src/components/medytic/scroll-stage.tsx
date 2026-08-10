@@ -15,15 +15,17 @@ const STAGE_FINISHES: PhoneFinish[] = [
   "forest",
   "black-metal",
 ];
-const CUE_LETTERS = "SCROLL TO SEE MORE".split("");
+const CUE_LETTERS = "SCROLL".split("");
 
-/** Pinned stage: idle auto-scrolls through screens once, then user continues. */
+/** Pinned stage: idle auto-scrolls through screens; resumes from current progress. */
 export function MedyScrollStage() {
   const sectionRef = useRef<HTMLElement>(null);
   const stRef = useRef<ScrollTrigger | null>(null);
   const modeRef = useRef<"auto" | "manual">("auto");
+  const autoDoneRef = useRef(false);
   const indexRef = useRef(0);
   const [index, setIndex] = useState(0);
+  const [progress, setProgress] = useState(0);
   const [pinned, setPinned] = useState(false);
   const [dir, setDir] = useState<1 | -1>(1);
   const [autoDone, setAutoDone] = useState(false);
@@ -32,11 +34,12 @@ export function MedyScrollStage() {
   const n = screens.length;
 
   indexRef.current = index;
+  autoDoneRef.current = autoDone;
 
-  const scrollToProgress = (progress: number, duration = 0.95) => {
+  const scrollToProgress = (pTarget: number, duration = 0.95) => {
     const st = stRef.current;
     if (!st) return;
-    const p = Math.max(0, Math.min(1, progress));
+    const p = Math.max(0, Math.min(1, pTarget));
     const y = st.start + (st.end - st.start) * p;
     const lenis = getLenis();
     if (lenis) lenis.scrollTo(y, { duration, immediate: false });
@@ -44,7 +47,6 @@ export function MedyScrollStage() {
   };
 
   const progressForIndex = (i: number) => {
-    // Land mid-segment so the screen reads clearly while pinned
     if (n <= 1) return 0;
     return Math.min(0.999, (i + 0.55) / n);
   };
@@ -65,18 +67,21 @@ export function MedyScrollStage() {
         onToggle: (self) => {
           setPinned(self.isActive);
           if (!self.isActive && self.direction === -1) {
-            // Scrolled back above the stage — allow auto again on re-entry
             setAutoDone(false);
             modeRef.current = "auto";
           }
         },
         onUpdate: (self) => {
+          setProgress(self.progress);
           const i = Math.min(n - 1, Math.floor(self.progress * n));
           setIndex((prev) => {
             if (i !== prev) setDir(i > prev ? 1 : -1);
             return i;
           });
+
+          // At the end — pause auto. Scroll back up — resume from here.
           if (self.progress >= 0.985) setAutoDone(true);
+          else if (self.direction === -1) setAutoDone(false);
         },
       });
       stRef.current = st;
@@ -93,21 +98,21 @@ export function MedyScrollStage() {
     };
   }, [n, reduced]);
 
-  // Idle auto-scroll advances real page scroll through the pin — once, no loop
+  // Idle auto-scroll from whatever progress the user is at
   useEffect(() => {
-    if (!pinned || reduced || autoDone) return;
+    if (!pinned || reduced) return;
+
+    let idle = window.setTimeout(() => {
+      modeRef.current = "auto";
+    }, 700);
 
     const pauseManual = () => {
       modeRef.current = "manual";
       window.clearTimeout(idle);
       idle = window.setTimeout(() => {
-        if (!autoDone) modeRef.current = "auto";
+        modeRef.current = "auto";
       }, AUTO_MS);
     };
-
-    let idle = window.setTimeout(() => {
-      modeRef.current = "auto";
-    }, 900);
 
     window.addEventListener("wheel", pauseManual, { passive: true });
     window.addEventListener("touchmove", pauseManual, { passive: true });
@@ -118,12 +123,16 @@ export function MedyScrollStage() {
       const st = stRef.current;
       if (!st || !st.isActive) return;
 
-      const current = Math.min(n - 1, Math.floor(st.progress * n));
-      if (current >= n - 1 || st.progress >= 0.985) {
+      if (st.progress >= 0.985) {
+        autoDoneRef.current = true;
         setAutoDone(true);
-        modeRef.current = "manual";
-        // Ease to the pin end so the next user scroll leaves the section
+        return;
+      }
+
+      const current = Math.min(n - 1, Math.floor(st.progress * n));
+      if (current >= n - 1) {
         scrollToProgress(1, 0.7);
+        setAutoDone(true);
         return;
       }
 
@@ -137,14 +146,13 @@ export function MedyScrollStage() {
       window.removeEventListener("touchmove", pauseManual);
       window.removeEventListener("keydown", pauseManual);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- helpers are stable over pin session
-  }, [pinned, reduced, autoDone, n]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pinned, reduced, n]);
 
   const goToScreen = (i: number) => {
     modeRef.current = "manual";
     setDir(i >= indexRef.current ? 1 : -1);
     scrollToProgress(progressForIndex(i), 0.85);
-    if (i >= n - 1) setAutoDone(true);
   };
 
   const screen = screens[index]!;
@@ -175,7 +183,7 @@ export function MedyScrollStage() {
         }}
       />
 
-      {/* Center cue — stacked letters, not rotated text */}
+      {/* Center cue — high-contrast stack + mouse wheel, not a lone arrow */}
       <div
         className="medy-stage-cue"
         aria-hidden
@@ -184,40 +192,74 @@ export function MedyScrollStage() {
           left: "50%",
           top: "50%",
           transform: "translate(-50%, -50%)",
-          zIndex: 2,
+          zIndex: 3,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          gap: 14,
+          gap: 16,
           pointerEvents: "none",
-          opacity: pinned ? 0.6 : 0.38,
-          transition: "opacity 0.4s",
+          opacity: autoDone ? 0.2 : pinned ? 1 : 0.55,
+          transition: "opacity 0.45s",
         }}
       >
-        <span
-          className="text-label"
+        <div
           style={{
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            gap: 3,
-            color: "rgba(243,239,230,0.78)",
-            fontSize: 11,
-            letterSpacing: "0.08em",
-            lineHeight: 1,
+            gap: 18,
+            padding: "18px 12px 16px",
+            borderRadius: 999,
+            background: "rgba(7,8,12,0.72)",
+            border: "1px solid rgba(243,239,230,0.14)",
+            boxShadow: "0 12px 40px rgba(0,0,0,0.45)",
+            backdropFilter: "blur(10px)",
           }}
         >
-          {CUE_LETTERS.map((ch, i) =>
-            ch === " " ? (
-              <span key={`sp-${i}`} style={{ height: 8 }} />
-            ) : (
+          <span
+            className="text-label"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 5,
+              color: "#f3efe6",
+              fontSize: 12,
+              fontWeight: 600,
+              letterSpacing: "0.2em",
+              lineHeight: 1,
+              textShadow: "0 1px 12px rgba(0,0,0,0.65)",
+            }}
+          >
+            {CUE_LETTERS.map((ch, i) => (
               <span key={`${ch}-${i}`}>{ch}</span>
-            ),
-          )}
-        </span>
-        <span className="medy-stage-arrow" style={{ color: medyAccent, fontSize: 18 }}>
-          ↓
-        </span>
+            ))}
+          </span>
+
+          {/* Mouse + moving wheel — clearer “scroll” affordance than ↓ */}
+          <div className="medy-stage-mouse" style={{ position: "relative" }}>
+            <svg width="22" height="34" viewBox="0 0 22 34" fill="none">
+              <rect
+                x="1.25"
+                y="1.25"
+                width="19.5"
+                height="31.5"
+                rx="9.75"
+                stroke="rgba(243,239,230,0.85)"
+                strokeWidth="1.5"
+              />
+              <rect
+                className="medy-stage-wheel"
+                x="9.5"
+                y="7"
+                width="3"
+                height="7"
+                rx="1.5"
+                fill={medyAccent}
+              />
+            </svg>
+          </div>
+        </div>
       </div>
 
       <div
@@ -311,15 +353,11 @@ export function MedyScrollStage() {
               <motion.div
                 key={screen.id}
                 initial={
-                  reduced
-                    ? { opacity: 0 }
-                    : { opacity: 0, y: dir * 14 }
+                  reduced ? { opacity: 0 } : { opacity: 0, y: dir * 14 }
                 }
                 animate={{ opacity: 1, y: 0 }}
                 exit={
-                  reduced
-                    ? { opacity: 0 }
-                    : { opacity: 0, y: dir * -10 }
+                  reduced ? { opacity: 0 } : { opacity: 0, y: dir * -10 }
                 }
                 transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
                 style={{ display: "grid", gap: "0.35rem" }}
@@ -392,8 +430,9 @@ export function MedyScrollStage() {
             justifyContent: "center",
             alignItems: "center",
             position: "relative",
-            overflow: "hidden",
+            overflow: "visible",
             minHeight: "min(72svh, 680px)",
+            gap: 14,
           }}
         >
           <div
@@ -402,6 +441,7 @@ export function MedyScrollStage() {
               width: "100%",
               maxWidth: 360,
               aspectRatio: "9 / 17.5",
+              overflow: "hidden",
             }}
           >
             <AnimatePresence mode="sync" initial={false} custom={dir}>
@@ -409,15 +449,11 @@ export function MedyScrollStage() {
                 key={screen.id}
                 custom={dir}
                 initial={
-                  reduced
-                    ? { opacity: 0 }
-                    : { opacity: 0, y: dir * 110 }
+                  reduced ? { opacity: 0 } : { opacity: 0, y: dir * 110 }
                 }
                 animate={{ opacity: 1, y: 0 }}
                 exit={
-                  reduced
-                    ? { opacity: 0 }
-                    : { opacity: 0, y: dir * -110 }
+                  reduced ? { opacity: 0 } : { opacity: 0, y: dir * -110 }
                 }
                 transition={{
                   duration: 0.55,
@@ -449,6 +485,72 @@ export function MedyScrollStage() {
                 </PhoneFrame>
               </motion.div>
             </AnimatePresence>
+          </div>
+
+          {/* Vertical progress — tracks pin scroll across slides */}
+          <div
+            className="medy-stage-rail"
+            aria-hidden
+            style={{
+              position: "relative",
+              flexShrink: 0,
+              width: 3,
+              alignSelf: "stretch",
+              maxHeight: "min(72svh, 680px)",
+              marginBlock: "auto",
+              borderRadius: 999,
+              background: "rgba(243,239,230,0.12)",
+              overflow: "visible",
+            }}
+          >
+            <motion.div
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: 0,
+                height: `${Math.max(2, progress * 100)}%`,
+                borderRadius: 999,
+                background: medyAccent,
+                boxShadow: `0 0 18px ${medyAccent}88`,
+              }}
+              transition={{ type: "tween", duration: 0.12, ease: "linear" }}
+            />
+
+            {screens.map((s, i) => {
+              const top = n <= 1 ? 0 : ((i + 0.5) / n) * 100;
+              const reached = progress >= (i + 0.05) / n;
+              const active = i === index;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  aria-label={`Jump to ${s.label}`}
+                  data-cursor="hover"
+                  onClick={() => goToScreen(i)}
+                  style={{
+                    position: "absolute",
+                    left: "50%",
+                    top: `${top}%`,
+                    transform: "translate(-50%, -50%)",
+                    width: active ? 11 : 7,
+                    height: active ? 11 : 7,
+                    borderRadius: 999,
+                    padding: 0,
+                    border: active
+                      ? `2px solid ${medyAccent}`
+                      : "1px solid rgba(243,239,230,0.35)",
+                    background: reached || active ? medyAccent : "#07080c",
+                    cursor: "pointer",
+                    transition:
+                      "width 0.25s, height 0.25s, background 0.25s, border 0.25s",
+                    boxShadow: active
+                      ? `0 0 0 3px rgba(7,8,12,0.9), 0 0 12px ${medyAccent}66`
+                      : undefined,
+                  }}
+                />
+              );
+            })}
           </div>
         </div>
       </div>

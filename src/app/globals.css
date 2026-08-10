@@ -182,30 +182,45 @@ video {
   display: none;
 }
 
-@keyframes medyArrowBounce {
-  0%,
+@keyframes medyWheelScroll {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  55% {
+    transform: translateY(8px);
+    opacity: 0.25;
+  }
   100% {
     transform: translateY(0);
-    opacity: 0.85;
-  }
-  50% {
-    transform: translateY(8px);
     opacity: 1;
   }
 }
 
-.medy-stage-arrow {
-  display: inline-block;
-  animation: medyArrowBounce 1.5s var(--ease-out-expo) infinite;
+.medy-stage-wheel {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: medyWheelScroll 1.55s var(--ease-out-expo) infinite;
 }
 
 @media (max-width: 900px) {
   .medy-stage-cue {
     left: auto !important;
-    right: 1rem !important;
+    right: 0.75rem !important;
     top: auto !important;
-    bottom: 1.25rem !important;
+    bottom: 1.1rem !important;
     transform: none !important;
+  }
+
+  .medy-stage-rail {
+    position: absolute !important;
+    right: 0 !important;
+    top: 50% !important;
+    transform: translateY(-50%);
+    height: min(55svh, 420px) !important;
+    max-height: none !important;
+    align-self: auto !important;
+    margin-block: 0 !important;
   }
 }
 
