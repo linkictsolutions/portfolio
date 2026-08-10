@@ -169,9 +169,17 @@ video {
   .medy-stage-grid,
   .medy-split,
   .medy-appt-grid,
-  .medy-lightbox {
+  .medy-lightbox,
+  .medy-gallery-head {
     grid-template-columns: 1fr !important;
   }
+}
+
+.medy-reel {
+  scrollbar-width: none;
+}
+.medy-reel::-webkit-scrollbar {
+  display: none;
 }
 
 /* Case-study process track */

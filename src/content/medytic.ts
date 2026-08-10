@@ -1,7 +1,16 @@
 export const medyAccent = "#1987EE";
 
+export type MedyScreen = {
+  id: string;
+  src: string;
+  label: string;
+  caption: string;
+  /** phone = full screen export; panel = modal/card export (not a device screen) */
+  fit?: "phone" | "panel";
+};
+
 /** Full set for expand gallery (includes appointment detail). */
-export const medyScreens = [
+export const medyScreens: MedyScreen[] = [
   {
     id: "overview-family",
     src: "/projects/medytic/overview-family.png",
@@ -31,6 +40,7 @@ export const medyScreens = [
     src: "/projects/medytic/appointment-details.png",
     label: "Appointment Detail",
     caption: "Join, reschedule, calendar — actions within reach.",
+    fit: "panel",
   },
   {
     id: "monitoring",
@@ -62,7 +72,7 @@ export const medyScreens = [
     label: "Family Management",
     caption: "Settings that treat family as a first-class mode.",
   },
-] as const;
+];
 
 /**
  * Scroll-stage sequence only.
