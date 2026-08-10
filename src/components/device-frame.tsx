@@ -41,9 +41,10 @@ function deviceGeometry(device: PhoneDevice) {
     default:
       return {
         aspect: "320 / 660",
-        radius: 44,
-        screenRadius: 34,
-        padding: 10,
+        radius: 42,
+        screenRadius: 32,
+        // Slightly tighter bezel so island/edges read proportional at reel sizes
+        padding: 9,
         punchHole: false,
       };
   }
@@ -242,13 +243,15 @@ export function PhoneFrame({
         />
       ) : (
         <div
+          aria-hidden
           style={{
             position: "absolute",
-            top: 18,
+            // Scales with frame — ~real Dynamic Island proportion
+            top: `calc(${shell.padding}px + 1.1%)`,
             left: "50%",
             transform: "translateX(-50%)",
-            width: 92,
-            height: 22,
+            width: "25.5%",
+            aspectRatio: "3.4 / 1",
             borderRadius: 999,
             background: "#050507",
             boxShadow:

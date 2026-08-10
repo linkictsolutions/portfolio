@@ -13,22 +13,31 @@ import { medyAccent, medyScreens, type MedyScreen } from "@/content/medytic";
 
 /** Phone screens only — appointment detail is a modal panel, shown in Appointments. */
 const REEL = medyScreens.filter((s) => s.fit !== "panel");
+const PHONE_W = 300;
+const AUTOPLAY_MS = 2600;
 
 /**
- * Decision reel (fixed):
- * — Drag / arrows / dots browse the strip (caption follows)
- * — One click on a phone opens the expand stage
- * — No fake phone shell, no y-shift, no scrollIntoView page jumps
+ * Decision reel:
+ * — Larger proportional phones; auto-scrolls left on enter; pauses on hover
+ * — Click expands; expanded prev/next slides with direction
  */
 export function MedyExpandGallery() {
   const reduced = useReducedMotion();
+  const sectionRef = useRef<HTMLElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const scrollingRef = useRef(false);
+  const pausedRef = useRef(false);
+  const inViewRef = useRef(false);
+  const focusRef = useRef(0);
+
   const [focus, setFocus] = useState(0);
   const [expanded, setExpanded] = useState<MedyScreen | null>(null);
+  const [expandDir, setExpandDir] = useState<1 | -1>(1);
+
+  focusRef.current = focus;
 
   const scrollToIndex = useCallback(
-    (index: number) => {
+    (index: number, smooth = true) => {
       const track = trackRef.current;
       if (!track) return;
       const next = Math.max(0, Math.min(REEL.length - 1, index));
@@ -39,22 +48,26 @@ export function MedyExpandGallery() {
 
       scrollingRef.current = true;
       setFocus(next);
+      focusRef.current = next;
 
       const left =
         el.offsetLeft - (track.clientWidth / 2 - el.offsetWidth / 2);
       track.scrollTo({
         left: Math.max(0, left),
-        behavior: reduced ? "auto" : "smooth",
+        behavior: reduced || !smooth ? "auto" : "smooth",
       });
 
-      window.setTimeout(() => {
-        scrollingRef.current = false;
-      }, reduced ? 50 : 450);
+      window.setTimeout(
+        () => {
+          scrollingRef.current = false;
+        },
+        reduced || !smooth ? 40 : 480,
+      );
     },
     [reduced],
   );
 
-  // Focus follows horizontal scroll (ignore while we drive scroll programmatically)
+  // Focus follows horizontal scroll
   useEffect(() => {
     const track = trackRef.current;
     if (!track) return;
@@ -76,6 +89,7 @@ export function MedyExpandGallery() {
           }
         });
         setFocus(best);
+        focusRef.current = best;
       });
     };
 
@@ -86,18 +100,39 @@ export function MedyExpandGallery() {
     };
   }, []);
 
+  // Autoplay when section enters view — advances left→right; pauses on pointer
+  useEffect(() => {
+    if (reduced) return;
+    const section = sectionRef.current;
+    if (!section) return;
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        inViewRef.current = Boolean(entry?.isIntersecting);
+      },
+      { threshold: 0.35 },
+    );
+    io.observe(section);
+
+    const id = window.setInterval(() => {
+      if (!inViewRef.current || pausedRef.current || expanded) return;
+      const cur = focusRef.current;
+      const next = cur >= REEL.length - 1 ? 0 : cur + 1;
+      scrollToIndex(next);
+    }, AUTOPLAY_MS);
+
+    return () => {
+      io.disconnect();
+      window.clearInterval(id);
+    };
+  }, [reduced, expanded, scrollToIndex]);
+
   useEffect(() => {
     if (!expanded) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setExpanded(null);
-      if (e.key === "ArrowRight") {
-        const i = REEL.findIndex((s) => s.id === expanded.id);
-        if (i < REEL.length - 1) setExpanded(REEL[i + 1]!);
-      }
-      if (e.key === "ArrowLeft") {
-        const i = REEL.findIndex((s) => s.id === expanded.id);
-        if (i > 0) setExpanded(REEL[i - 1]!);
-      }
+      if (e.key === "ArrowRight") stepExpanded(1);
+      if (e.key === "ArrowLeft") stepExpanded(-1);
     };
     window.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
@@ -106,14 +141,25 @@ export function MedyExpandGallery() {
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expanded]);
+
+  function stepExpanded(dir: 1 | -1) {
+    if (!expanded) return;
+    const i = REEL.findIndex((s) => s.id === expanded.id);
+    const next = i + dir;
+    if (next < 0 || next >= REEL.length) return;
+    setExpandDir(dir);
+    setExpanded(REEL[next]!);
+  }
 
   const active = REEL[focus]!;
 
   return (
     <section
+      ref={sectionRef}
       style={{
-        padding: "clamp(2.75rem, 6vw, 5rem) 0",
+        padding: "clamp(2rem, 4.5vw, 3.5rem) 0 clamp(2.5rem, 5vw, 4rem)",
         background: `
           radial-gradient(800px 360px at 80% 0%, rgba(25,135,238,0.08), transparent 55%),
           var(--color-paper)
@@ -132,7 +178,7 @@ export function MedyExpandGallery() {
           style={{
             display: "grid",
             gridTemplateColumns: "minmax(0, 0.95fr) minmax(0, 1.15fr)",
-            gap: "clamp(1.25rem, 3vw, 2.5rem)",
+            gap: "clamp(1rem, 2.5vw, 2rem)",
             alignItems: "end",
           }}
           className="medy-gallery-head"
@@ -144,8 +190,8 @@ export function MedyExpandGallery() {
             <h2
               className="text-display"
               style={{
-                fontSize: "clamp(1.85rem, 4.5vw, 3.4rem)",
-                margin: "0.55rem 0 0",
+                fontSize: "clamp(1.75rem, 4vw, 3.1rem)",
+                margin: "0.45rem 0 0",
                 lineHeight: 0.95,
               }}
             >
@@ -155,14 +201,14 @@ export function MedyExpandGallery() {
             </h2>
             <p
               style={{
-                marginTop: 12,
-                maxWidth: 420,
+                marginTop: 10,
+                maxWidth: 400,
                 opacity: 0.55,
-                fontSize: "0.9rem",
-                lineHeight: 1.45,
+                fontSize: "0.88rem",
+                lineHeight: 1.4,
               }}
             >
-              Scroll the strip or use the arrows. Click any phone to expand it.
+              Auto-scrolls when you arrive — hover to take over. Click a phone to expand.
             </p>
           </div>
 
@@ -176,7 +222,7 @@ export function MedyExpandGallery() {
             >
               <div
                 className="text-label"
-                style={{ opacity: 0.45, marginBottom: 8 }}
+                style={{ opacity: 0.45, marginBottom: 6 }}
               >
                 {(focus + 1).toString().padStart(2, "0")} /{" "}
                 {REEL.length.toString().padStart(2, "0")}
@@ -184,7 +230,7 @@ export function MedyExpandGallery() {
               <h3
                 className="text-display"
                 style={{
-                  fontSize: "clamp(1.35rem, 2.8vw, 2rem)",
+                  fontSize: "clamp(1.25rem, 2.5vw, 1.85rem)",
                   margin: 0,
                   lineHeight: 1.05,
                 }}
@@ -193,11 +239,11 @@ export function MedyExpandGallery() {
               </h3>
               <p
                 style={{
-                  marginTop: 10,
+                  marginTop: 8,
                   maxWidth: 420,
                   opacity: 0.68,
-                  lineHeight: 1.45,
-                  fontSize: "0.95rem",
+                  lineHeight: 1.4,
+                  fontSize: "0.92rem",
                 }}
               >
                 {active.caption}
@@ -208,7 +254,7 @@ export function MedyExpandGallery() {
 
         <div
           style={{
-            marginTop: "1.35rem",
+            marginTop: "1rem",
             display: "flex",
             alignItems: "center",
             gap: 10,
@@ -216,14 +262,20 @@ export function MedyExpandGallery() {
         >
           <RailButton
             label="Previous screen"
-            onClick={() => scrollToIndex(focus - 1)}
+            onClick={() => {
+              pausedRef.current = true;
+              scrollToIndex(focus - 1);
+            }}
             disabled={focus === 0}
           >
             ←
           </RailButton>
           <RailButton
             label="Next screen"
-            onClick={() => scrollToIndex(focus + 1)}
+            onClick={() => {
+              pausedRef.current = true;
+              scrollToIndex(focus + 1);
+            }}
             disabled={focus === REEL.length - 1}
           >
             →
@@ -243,7 +295,10 @@ export function MedyExpandGallery() {
               <button
                 key={s.id}
                 type="button"
-                onClick={() => scrollToIndex(i)}
+                onClick={() => {
+                  pausedRef.current = true;
+                  scrollToIndex(i);
+                }}
                 style={{
                   width: i === focus ? 18 : 7,
                   height: 7,
@@ -263,18 +318,24 @@ export function MedyExpandGallery() {
       <div
         ref={trackRef}
         className="medy-reel"
+        onPointerEnter={() => {
+          pausedRef.current = true;
+        }}
+        onPointerLeave={() => {
+          pausedRef.current = false;
+        }}
         style={{
-          marginTop: "1.75rem",
+          marginTop: "0.85rem",
           display: "flex",
           alignItems: "flex-end",
-          gap: "clamp(1rem, 2.5vw, 1.75rem)",
+          gap: "clamp(1.1rem, 2.2vw, 1.6rem)",
           overflowX: "auto",
           overflowY: "visible",
           scrollSnapType: "x mandatory",
-          scrollPaddingInline: "max(1.25rem, calc((100vw - 220px) / 2))",
-          paddingInline: "max(1.25rem, calc((100vw - 220px) / 2))",
-          paddingTop: 12,
-          paddingBottom: 28,
+          scrollPaddingInline: `max(1.25rem, calc((100vw - ${PHONE_W}px) / 2))`,
+          paddingInline: `max(1.25rem, calc((100vw - ${PHONE_W}px) / 2))`,
+          paddingTop: 8,
+          paddingBottom: 20,
           WebkitOverflowScrolling: "touch",
         }}
       >
@@ -289,20 +350,22 @@ export function MedyExpandGallery() {
               data-cursor-label="Expand"
               aria-label={`Expand ${s.label}`}
               onClick={() => {
+                pausedRef.current = true;
                 setFocus(i);
+                setExpandDir(1);
                 setExpanded(s);
               }}
               style={{
                 flex: "0 0 auto",
-                width: 220,
+                width: PHONE_W,
                 scrollSnapAlign: "center",
                 border: "none",
                 background: "transparent",
                 padding: 0,
                 cursor: "pointer",
                 textAlign: "left",
-                opacity: isFocus ? 1 : 0.5,
-                transform: isFocus ? "scale(1)" : "scale(0.92)",
+                opacity: isFocus ? 1 : 0.48,
+                transform: isFocus ? "scale(1)" : "scale(0.9)",
                 transformOrigin: "center bottom",
                 transition: "opacity 0.35s ease, transform 0.35s ease",
               }}
@@ -327,7 +390,7 @@ export function MedyExpandGallery() {
               <div
                 className="text-label"
                 style={{
-                  marginTop: 12,
+                  marginTop: 10,
                   opacity: isFocus ? 0.7 : 0.35,
                   transition: "opacity 0.3s",
                 }}
@@ -342,7 +405,7 @@ export function MedyExpandGallery() {
       <AnimatePresence>
         {expanded && (
           <motion.div
-            key="expand"
+            key="expand-shell"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -371,116 +434,144 @@ export function MedyExpandGallery() {
               }}
             />
 
-            <motion.div
-              initial={reduced ? false : { opacity: 0, scale: 0.92, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={reduced ? undefined : { opacity: 0, scale: 0.96 }}
-              transition={{ type: "spring", stiffness: 300, damping: 28 }}
+            <div
               className="medy-lightbox"
               onClick={(e) => e.stopPropagation()}
               style={{
                 position: "relative",
                 zIndex: 201,
                 display: "grid",
-                gridTemplateColumns: "minmax(240px, 320px) minmax(0, 340px)",
+                gridTemplateColumns: "minmax(260px, 340px) minmax(0, 340px)",
                 gap: "clamp(1.5rem, 4vw, 3rem)",
                 alignItems: "center",
-                maxWidth: 860,
+                maxWidth: 900,
                 width: "100%",
                 color: "#f3efe6",
               }}
             >
-              <PhoneFrame finish="black-metal" screenBg="#f3f4f6">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={expanded.src}
-                  alt={expanded.label}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    objectPosition: "top center",
-                    display: "block",
-                  }}
-                />
-              </PhoneFrame>
-
-              <div>
-                <p className="text-label" style={{ color: medyAccent }}>
-                  Decision
-                </p>
-                <h3
-                  className="text-display"
-                  style={{
-                    fontSize: "clamp(1.75rem, 4vw, 2.75rem)",
-                    margin: "0.5rem 0 0",
-                    lineHeight: 1,
-                  }}
-                >
-                  {expanded.label}
-                </h3>
-                <p
-                  style={{
-                    marginTop: "1rem",
-                    fontSize: "1.05rem",
-                    lineHeight: 1.5,
-                    opacity: 0.8,
-                  }}
-                >
-                  {expanded.caption}
-                </p>
-
-                <div
-                  style={{
-                    marginTop: "1.75rem",
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 8,
-                    alignItems: "center",
-                  }}
-                >
-                  <RailButton
-                    label="Previous"
-                    light
-                    onClick={() => {
-                      const i = REEL.findIndex((s) => s.id === expanded.id);
-                      if (i > 0) setExpanded(REEL[i - 1]!);
-                    }}
+              <div style={{ position: "relative", overflow: "hidden" }}>
+                <AnimatePresence mode="wait" custom={expandDir}>
+                  <motion.div
+                    key={expanded.id}
+                    custom={expandDir}
+                    initial={
+                      reduced
+                        ? { opacity: 0 }
+                        : { opacity: 0, x: expandDir * 56, scale: 0.96 }
+                    }
+                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                    exit={
+                      reduced
+                        ? { opacity: 0 }
+                        : { opacity: 0, x: expandDir * -48, scale: 0.96 }
+                    }
+                    transition={{ type: "spring", stiffness: 320, damping: 30 }}
                   >
-                    ←
-                  </RailButton>
-                  <RailButton
-                    label="Next"
-                    light
-                    onClick={() => {
-                      const i = REEL.findIndex((s) => s.id === expanded.id);
-                      if (i < REEL.length - 1) setExpanded(REEL[i + 1]!);
-                    }}
-                  >
-                    →
-                  </RailButton>
-                  <button
-                    type="button"
-                    data-cursor="hover"
-                    onClick={() => setExpanded(null)}
-                    aria-label="Close"
-                    style={{
-                      marginLeft: 4,
-                      border: "none",
-                      background: "transparent",
-                      color: "#f3efe6",
-                      fontWeight: 500,
-                      fontSize: 28,
-                      lineHeight: 1,
-                      cursor: "pointer",
-                      padding: "4px 8px",
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
+                    <PhoneFrame finish="black-metal" screenBg="#f3f4f6">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={expanded.src}
+                        alt={expanded.label}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          objectPosition: "top center",
+                          display: "block",
+                        }}
+                      />
+                    </PhoneFrame>
+                  </motion.div>
+                </AnimatePresence>
               </div>
-            </motion.div>
+
+              <AnimatePresence mode="wait" custom={expandDir}>
+                <motion.div
+                  key={`${expanded.id}-copy`}
+                  custom={expandDir}
+                  initial={
+                    reduced
+                      ? { opacity: 0 }
+                      : { opacity: 0, x: expandDir * 28 }
+                  }
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={
+                    reduced
+                      ? { opacity: 0 }
+                      : { opacity: 0, x: expandDir * -20 }
+                  }
+                  transition={{ duration: 0.28 }}
+                >
+                  <p className="text-label" style={{ color: medyAccent }}>
+                    Decision
+                  </p>
+                  <h3
+                    className="text-display"
+                    style={{
+                      fontSize: "clamp(1.75rem, 4vw, 2.75rem)",
+                      margin: "0.5rem 0 0",
+                      lineHeight: 1,
+                    }}
+                  >
+                    {expanded.label}
+                  </h3>
+                  <p
+                    style={{
+                      marginTop: "1rem",
+                      fontSize: "1.05rem",
+                      lineHeight: 1.5,
+                      opacity: 0.8,
+                    }}
+                  >
+                    {expanded.caption}
+                  </p>
+
+                  <div
+                    style={{
+                      marginTop: "1.75rem",
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 8,
+                      alignItems: "center",
+                    }}
+                  >
+                    <RailButton
+                      label="Previous"
+                      light
+                      onClick={() => stepExpanded(-1)}
+                    >
+                      ←
+                    </RailButton>
+                    <RailButton
+                      label="Next"
+                      light
+                      onClick={() => stepExpanded(1)}
+                    >
+                      →
+                    </RailButton>
+                    <button
+                      type="button"
+                      data-cursor="hover"
+                      onClick={() => setExpanded(null)}
+                      aria-label="Close"
+                      style={{
+                        marginLeft: 4,
+                        border: "none",
+                        background: "transparent",
+                        color: "#f3efe6",
+                        fontWeight: 500,
+                        fontSize: 28,
+                        lineHeight: 1,
+                        cursor: "pointer",
+                        padding: "4px 8px",
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
