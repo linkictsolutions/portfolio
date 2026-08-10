@@ -4,10 +4,17 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { PhoneFrame } from "@/components/device-frame";
+import { PhoneFrame, type PhoneFinish } from "@/components/device-frame";
 import { medyAccent, medyBrief, medyStageScreens } from "@/content/medytic";
 
 const AUTO_MS = 3200;
+const STAGE_FINISHES: PhoneFinish[] = [
+  "burgundy",
+  "grey",
+  "forest",
+  "black-metal",
+];
+const CUE_LETTERS = "SCROLL TO SEE MORE".split("");
 
 /** Pinned scroll stage: scrub explores; idle auto-advances with screen motion. */
 export function MedyScrollStage() {
@@ -103,6 +110,7 @@ export function MedyScrollStage() {
   }, [pinned, reduced, screens.length]);
 
   const screen = screens[index]!;
+  const finish = STAGE_FINISHES[index % STAGE_FINISHES.length]!;
 
   return (
     <section
@@ -129,7 +137,7 @@ export function MedyScrollStage() {
         }}
       />
 
-      {/* Center cue */}
+      {/* Center cue — stacked letters, not rotated text */}
       <div
         className="medy-stage-cue"
         aria-hidden
@@ -142,21 +150,32 @@ export function MedyScrollStage() {
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          gap: 10,
+          gap: 14,
           pointerEvents: "none",
-          opacity: pinned ? 0.55 : 0.35,
+          opacity: pinned ? 0.6 : 0.38,
           transition: "opacity 0.4s",
         }}
       >
         <span
           className="text-label"
           style={{
-            writingMode: "vertical-rl",
-            letterSpacing: "0.22em",
-            color: "rgba(243,239,230,0.75)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 3,
+            color: "rgba(243,239,230,0.78)",
+            fontSize: 11,
+            letterSpacing: "0.08em",
+            lineHeight: 1,
           }}
         >
-          Scroll down to see more
+          {CUE_LETTERS.map((ch, i) =>
+            ch === " " ? (
+              <span key={`sp-${i}`} style={{ height: 8 }} />
+            ) : (
+              <span key={`${ch}-${i}`}>{ch}</span>
+            ),
+          )}
         </span>
         <span className="medy-stage-arrow" style={{ color: medyAccent, fontSize: 18 }}>
           ↓
@@ -335,57 +354,63 @@ export function MedyScrollStage() {
             justifyContent: "center",
             alignItems: "center",
             position: "relative",
+            overflow: "hidden",
+            minHeight: "min(72svh, 680px)",
           }}
         >
-          <div style={{ width: "100%", maxWidth: 360 }}>
-            <PhoneFrame
-              device="galaxy-s23"
-              finish="burgundy"
-              screenBg="#f3f4f6"
-            >
-              <div
+          <div
+            style={{
+              position: "relative",
+              width: "100%",
+              maxWidth: 360,
+              aspectRatio: "9 / 17.5",
+            }}
+          >
+            <AnimatePresence mode="sync" initial={false} custom={dir}>
+              <motion.div
+                key={screen.id}
+                custom={dir}
+                initial={
+                  reduced
+                    ? { opacity: 0 }
+                    : { opacity: 0, y: dir * 110 }
+                }
+                animate={{ opacity: 1, y: 0 }}
+                exit={
+                  reduced
+                    ? { opacity: 0 }
+                    : { opacity: 0, y: dir * -110 }
+                }
+                transition={{
+                  duration: 0.55,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
                 style={{
-                  position: "relative",
+                  position: "absolute",
+                  inset: 0,
                   width: "100%",
-                  height: "100%",
-                  overflow: "hidden",
-                  background: "#f3f4f6",
                 }}
               >
-                <AnimatePresence mode="wait" initial={false} custom={dir}>
-                  <motion.img
-                    key={screen.src}
+                <PhoneFrame
+                  device="galaxy-s23"
+                  finish={finish}
+                  screenBg="#f3f4f6"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
                     src={screen.src}
                     alt={screen.label}
-                    custom={dir}
-                    initial={
-                      reduced
-                        ? { opacity: 0 }
-                        : { opacity: 0, x: dir * 48, scale: 1.02 }
-                    }
-                    animate={{ opacity: 1, x: 0, scale: 1 }}
-                    exit={
-                      reduced
-                        ? { opacity: 0 }
-                        : { opacity: 0, x: dir * -36, scale: 0.99 }
-                    }
-                    transition={{
-                      duration: 0.42,
-                      ease: [0.22, 1, 0.36, 1],
-                    }}
                     style={{
                       width: "100%",
                       height: "100%",
                       objectFit: "cover",
                       objectPosition: "top center",
                       display: "block",
-                      position: "absolute",
-                      inset: 0,
                     }}
                   />
-                </AnimatePresence>
-              </div>
-            </PhoneFrame>
+                </PhoneFrame>
+              </motion.div>
+            </AnimatePresence>
           </div>
         </div>
       </div>

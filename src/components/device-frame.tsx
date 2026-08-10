@@ -1,7 +1,12 @@
 import type { ReactNode } from "react";
 
 type PhoneDevice = "iphone" | "s23-ultra" | "galaxy-s23";
-type PhoneFinish = "matte" | "black-metal" | "burgundy";
+export type PhoneFinish =
+  | "matte"
+  | "black-metal"
+  | "burgundy"
+  | "grey"
+  | "forest";
 
 type PhoneFrameProps = {
   children: ReactNode;
@@ -49,85 +54,85 @@ function deviceGeometry(device: PhoneDevice) {
   }
 }
 
+type MetalTint = {
+  stops: string;
+  rim: string;
+  glow: string;
+  highlight: string;
+  edge: string;
+};
+
+const metalTints: Record<Exclude<PhoneFinish, "matte">, MetalTint> = {
+  burgundy: {
+    stops: `#6b2438 0%, #3a101c 16%, #1a080e 32%, #5c1e30 46%, #12060a 58%, #8a3450 72%, #2a0c16 86%, #4a1828 100%`,
+    rim: "rgba(255,190,210,0.28)",
+    glow: "rgba(180,60,90,0.45)",
+    highlight: "rgba(255,230,240,0.55)",
+    edge: "rgba(255,220,230,0.65)",
+  },
+  grey: {
+    stops: `#9a9aa3 0%, #5c5c66 14%, #2a2a32 30%, #6e6e78 46%, #1c1c22 60%, #8a8a94 76%, #3a3a44 90%, #55555f 100%`,
+    rim: "rgba(230,230,235,0.32)",
+    glow: "rgba(140,140,155,0.35)",
+    highlight: "rgba(255,255,255,0.5)",
+    edge: "rgba(255,255,255,0.6)",
+  },
+  forest: {
+    stops: `#2f5c42 0%, #163526 16%, #0a1810 32%, #285038 46%, #07120c 58%, #3d7a55 72%, #12261a 86%, #214830 100%`,
+    rim: "rgba(180,230,200,0.28)",
+    glow: "rgba(50,140,90,0.4)",
+    highlight: "rgba(220,255,235,0.48)",
+    edge: "rgba(200,245,220,0.6)",
+  },
+  "black-metal": {
+    stops: `#3a3a42 0%, #1a1a1f 18%, #0a0a0c 34%, #2e2e36 48%, #121216 62%, #404048 78%, #16161c 100%`,
+    rim: "rgba(255,255,255,0.22)",
+    glow: "rgba(25,135,238,0.25)",
+    highlight: "rgba(255,255,255,0.38)",
+    edge: "rgba(255,255,255,0.55)",
+  },
+};
+
 function shellStyles(finish: PhoneFinish, device: PhoneDevice) {
   const geo = deviceGeometry(device);
 
-  if (finish === "burgundy") {
+  if (finish === "matte") {
     return {
-      background: `
-        linear-gradient(
-          148deg,
-          #6b2438 0%,
-          #3a101c 16%,
-          #1a080e 32%,
-          #5c1e30 46%,
-          #12060a 58%,
-          #8a3450 72%,
-          #2a0c16 86%,
-          #4a1828 100%
-        )
-      `,
-      boxShadow: `
-        0 40px 80px -24px rgba(0,0,0,0.75),
-        0 0 0 1px rgba(255,190,210,0.28),
-        0 0 36px -8px rgba(180,60,90,0.45),
-        inset 0 1px 0 rgba(255,220,230,0.4),
-        inset 0 -2px 4px rgba(0,0,0,0.55)
-      `,
-      shine: `
-        linear-gradient(
-          112deg,
-          transparent 0%,
-          transparent 36%,
-          rgba(255,230,240,0.55) 44%,
-          rgba(255,200,220,0.12) 49%,
-          transparent 56%,
-          transparent 100%
-        )
-      `,
+      background: "linear-gradient(160deg, #2a2a30, #0a0a0c)",
+      boxShadow:
+        "0 40px 80px -30px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.06)",
+      shine: null as string | null,
+      rimInset: "rgba(255,255,255,0.18)",
+      edgeLine: "rgba(255,255,255,0.55)",
+      punchRim: "0 0 0 1.5px rgba(0,0,0,0.7), 0 0 0 2.5px rgba(255,255,255,0.1)",
       ...geo,
     };
   }
 
-  if (finish === "black-metal") {
-    return {
-      background: `linear-gradient(
-        150deg,
-        #3a3a42 0%,
-        #1a1a1f 18%,
-        #0a0a0c 34%,
-        #2e2e36 48%,
-        #121216 62%,
-        #404048 78%,
-        #16161c 100%
-      )`,
-      boxShadow: `
-        0 40px 80px -24px rgba(0,0,0,0.7),
-        0 0 0 1px rgba(255,255,255,0.22),
-        0 0 28px -6px rgba(25,135,238,0.25),
-        inset 0 1px 0 rgba(255,255,255,0.28),
-        inset 0 -1px 3px rgba(0,0,0,0.55)
-      `,
-      shine: `
-        linear-gradient(
-          118deg,
-          transparent 0%,
-          transparent 42%,
-          rgba(255,255,255,0.38) 48%,
-          rgba(255,255,255,0.05) 51%,
-          transparent 58%,
-          transparent 100%
-        )
-      `,
-      ...geo,
-    };
-  }
-
+  const tint = metalTints[finish];
   return {
-    background: "linear-gradient(160deg, #2a2a30, #0a0a0c)",
-    boxShadow:
-      "0 40px 80px -30px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.06)",
-    shine: null as string | null,
+    background: `linear-gradient(148deg, ${tint.stops})`,
+    boxShadow: `
+      0 40px 80px -24px rgba(0,0,0,0.75),
+      0 0 0 1px ${tint.rim},
+      0 0 36px -8px ${tint.glow},
+      inset 0 1px 0 ${tint.highlight},
+      inset 0 -2px 4px rgba(0,0,0,0.55)
+    `,
+    shine: `
+      linear-gradient(
+        112deg,
+        transparent 0%,
+        transparent 36%,
+        ${tint.highlight} 44%,
+        rgba(255,255,255,0.08) 49%,
+        transparent 56%,
+        transparent 100%
+      )
+    `,
+    rimInset: tint.rim,
+    edgeLine: tint.edge,
+    punchRim: `0 0 0 1.5px rgba(0,0,0,0.75), 0 0 0 2.5px ${tint.rim}`,
     ...geo,
   };
 }
@@ -173,7 +178,7 @@ export function PhoneFrame({
               zIndex: 3,
               padding: shell.padding,
               background: shell.shine!,
-              opacity: resolvedFinish === "burgundy" ? 0.95 : 0.75,
+              opacity: resolvedFinish === "burgundy" ? 0.95 : 0.8,
               WebkitMask:
                 "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
               WebkitMaskComposite: "xor",
@@ -188,33 +193,24 @@ export function PhoneFrame({
               borderRadius: shell.radius,
               pointerEvents: "none",
               zIndex: 3,
-              boxShadow:
-                resolvedFinish === "burgundy"
-                  ? "inset 0 0 0 1px rgba(255,210,220,0.28), inset 1px 0 0 rgba(255,200,210,0.16)"
-                  : "inset 0 0 0 1px rgba(255,255,255,0.18), inset 1px 0 0 rgba(255,255,255,0.1)",
+              boxShadow: `inset 0 0 0 1px ${shell.rimInset}, inset 1px 0 0 rgba(255,255,255,0.1)`,
             }}
           />
-          {(resolvedFinish === "burgundy" ||
-            resolvedFinish === "black-metal") && (
-            <div
-              aria-hidden
-              style={{
-                position: "absolute",
-                top: "10%",
-                bottom: "10%",
-                left: 1,
-                width: Math.max(2, shell.padding - 2),
-                borderRadius: 999,
-                background:
-                  resolvedFinish === "burgundy"
-                    ? "linear-gradient(180deg, transparent, rgba(255,220,230,0.65), transparent)"
-                    : "linear-gradient(180deg, transparent, rgba(255,255,255,0.55), transparent)",
-                zIndex: 3,
-                pointerEvents: "none",
-                opacity: resolvedFinish === "burgundy" ? 0.85 : 0.7,
-              }}
-            />
-          )}
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              top: "10%",
+              bottom: "10%",
+              left: 1,
+              width: Math.max(2, shell.padding - 2),
+              borderRadius: 999,
+              background: `linear-gradient(180deg, transparent, ${shell.edgeLine}, transparent)`,
+              zIndex: 3,
+              pointerEvents: "none",
+              opacity: 0.8,
+            }}
+          />
         </>
       )}
 
@@ -233,10 +229,7 @@ export function PhoneFrame({
             borderRadius: 999,
             background:
               "radial-gradient(circle at 32% 30%, #4a4a52 0%, #1a1a1e 45%, #050507 75%)",
-            boxShadow:
-              resolvedFinish === "burgundy"
-                ? "0 0 0 1.5px rgba(20,8,12,0.9), 0 0 0 2.5px rgba(255,200,210,0.2)"
-                : "0 0 0 1.5px rgba(0,0,0,0.7), 0 0 0 2.5px rgba(255,255,255,0.1)",
+            boxShadow: shell.punchRim,
             zIndex: 5,
           }}
         />
