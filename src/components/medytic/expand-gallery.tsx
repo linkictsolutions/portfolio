@@ -13,8 +13,9 @@ import { medyAccent, medyScreens, type MedyScreen } from "@/content/medytic";
 
 /** Phone screens only — appointment detail is a modal panel, shown in Appointments. */
 const REEL = medyScreens.filter((s) => s.fit !== "panel");
-const PHONE_W = 300;
-const AUTOPLAY_MS = 2600;
+const PHONE_W = 255;
+/** Gentle continuous drift (px / second) */
+const AUTO_SPEED = 36;
 
 /**
  * Decision reel:
@@ -29,12 +30,15 @@ export function MedyExpandGallery() {
   const pausedRef = useRef(false);
   const inViewRef = useRef(false);
   const focusRef = useRef(0);
+  const expandedRef = useRef(false);
 
   const [focus, setFocus] = useState(0);
   const [expanded, setExpanded] = useState<MedyScreen | null>(null);
   const [expandDir, setExpandDir] = useState<1 | -1>(1);
+  const [drifting, setDrifting] = useState(true);
 
   focusRef.current = focus;
+  expandedRef.current = expanded !== null;
 
   const scrollToIndex = useCallback(
     (index: number, smooth = true) => {
@@ -67,7 +71,7 @@ export function MedyExpandGallery() {
     [reduced],
   );
 
-  // Focus follows horizontal scroll
+  // Focus follows horizontal scroll (skip while programmatic snap)
   useEffect(() => {
     const track = trackRef.current;
     if (!track) return;
@@ -88,8 +92,10 @@ export function MedyExpandGallery() {
             best = Number(el.dataset.reelIndex);
           }
         });
-        setFocus(best);
-        focusRef.current = best;
+        if (best !== focusRef.current) {
+          setFocus(best);
+          focusRef.current = best;
+        }
       });
     };
 
@@ -100,7 +106,7 @@ export function MedyExpandGallery() {
     };
   }, []);
 
-  // Autoplay when section enters view — advances left→right; pauses on pointer
+  // Continuous gentle drift — no stepped jumps (those felt low-fps)
   useEffect(() => {
     if (reduced) return;
     const section = sectionRef.current;
@@ -110,23 +116,53 @@ export function MedyExpandGallery() {
       ([entry]) => {
         inViewRef.current = Boolean(entry?.isIntersecting);
       },
-      { threshold: 0.35 },
+      { threshold: 0.28 },
     );
     io.observe(section);
 
-    const id = window.setInterval(() => {
-      if (!inViewRef.current || pausedRef.current || expanded) return;
-      const cur = focusRef.current;
-      const next = cur >= REEL.length - 1 ? 0 : cur + 1;
-      scrollToIndex(next);
-    }, AUTOPLAY_MS);
+    let raf = 0;
+    let last = performance.now();
 
+    const tick = (now: number) => {
+      raf = requestAnimationFrame(tick);
+      const raw = now - last;
+      last = now;
+      const dt = Math.min(raw, 34);
+      const track = trackRef.current;
+      if (!track) return;
+
+      const shouldDrift =
+        inViewRef.current &&
+        !pausedRef.current &&
+        !expandedRef.current &&
+        !scrollingRef.current;
+
+      if (!shouldDrift) return;
+
+      const max = track.scrollWidth - track.clientWidth;
+      if (max <= 0) return;
+
+      let next = track.scrollLeft + (AUTO_SPEED * dt) / 1000;
+      if (next >= max - 0.5) next = 0;
+      track.scrollLeft = next;
+    };
+
+    raf = requestAnimationFrame(tick);
     return () => {
       io.disconnect();
-      window.clearInterval(id);
+      cancelAnimationFrame(raf);
     };
-  }, [reduced, expanded, scrollToIndex]);
+  }, [reduced]);
 
+  function pauseDrift() {
+    pausedRef.current = true;
+    setDrifting(false);
+  }
+
+  function resumeDrift() {
+    pausedRef.current = false;
+    setDrifting(true);
+  }
   useEffect(() => {
     if (!expanded) return;
     const onKey = (e: KeyboardEvent) => {
@@ -208,7 +244,7 @@ export function MedyExpandGallery() {
                 lineHeight: 1.4,
               }}
             >
-              Auto-scrolls when you arrive — hover to take over. Click a phone to expand.
+              Auto-drifts gently when you arrive — hover to take over. Click a phone to expand.
             </p>
           </div>
 
@@ -263,7 +299,7 @@ export function MedyExpandGallery() {
           <RailButton
             label="Previous screen"
             onClick={() => {
-              pausedRef.current = true;
+              pauseDrift();
               scrollToIndex(focus - 1);
             }}
             disabled={focus === 0}
@@ -273,7 +309,7 @@ export function MedyExpandGallery() {
           <RailButton
             label="Next screen"
             onClick={() => {
-              pausedRef.current = true;
+              pauseDrift();
               scrollToIndex(focus + 1);
             }}
             disabled={focus === REEL.length - 1}
@@ -296,7 +332,7 @@ export function MedyExpandGallery() {
                 key={s.id}
                 type="button"
                 onClick={() => {
-                  pausedRef.current = true;
+                  pauseDrift();
                   scrollToIndex(i);
                 }}
                 style={{
@@ -318,20 +354,17 @@ export function MedyExpandGallery() {
       <div
         ref={trackRef}
         className="medy-reel"
-        onPointerEnter={() => {
-          pausedRef.current = true;
-        }}
-        onPointerLeave={() => {
-          pausedRef.current = false;
-        }}
+        onPointerEnter={pauseDrift}
+        onPointerLeave={resumeDrift}
         style={{
           marginTop: "0.85rem",
           display: "flex",
           alignItems: "flex-end",
-          gap: "clamp(1.1rem, 2.2vw, 1.6rem)",
+          gap: "clamp(1rem, 2vw, 1.4rem)",
           overflowX: "auto",
           overflowY: "visible",
-          scrollSnapType: "x mandatory",
+          // Snap off while drifting — snap fights continuous scroll and feels like low FPS
+          scrollSnapType: drifting ? "none" : "x mandatory",
           scrollPaddingInline: `max(1.25rem, calc((100vw - ${PHONE_W}px) / 2))`,
           paddingInline: `max(1.25rem, calc((100vw - ${PHONE_W}px) / 2))`,
           paddingTop: 8,
@@ -350,7 +383,7 @@ export function MedyExpandGallery() {
               data-cursor-label="Expand"
               aria-label={`Expand ${s.label}`}
               onClick={() => {
-                pausedRef.current = true;
+                pauseDrift();
                 setFocus(i);
                 setExpandDir(1);
                 setExpanded(s);
@@ -364,10 +397,11 @@ export function MedyExpandGallery() {
                 padding: 0,
                 cursor: "pointer",
                 textAlign: "left",
-                opacity: isFocus ? 1 : 0.48,
-                transform: isFocus ? "scale(1)" : "scale(0.9)",
+                opacity: isFocus ? 1 : 0.52,
+                transform: isFocus ? "scale(1)" : "scale(0.94)",
                 transformOrigin: "center bottom",
-                transition: "opacity 0.35s ease, transform 0.35s ease",
+                transition: "opacity 0.45s ease, transform 0.45s ease",
+                willChange: "transform, opacity",
               }}
             >
               <PhoneFrame finish="black-metal" screenBg="#f3f4f6">

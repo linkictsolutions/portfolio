@@ -43,8 +43,7 @@ function deviceGeometry(device: PhoneDevice) {
         aspect: "320 / 660",
         radius: 42,
         screenRadius: 32,
-        // Slightly tighter bezel so island/edges read proportional at reel sizes
-        padding: 9,
+        padding: 8,
         punchHole: false,
       };
   }
@@ -250,8 +249,8 @@ export function PhoneFrame({
             top: `calc(${shell.padding}px + 1.1%)`,
             left: "50%",
             transform: "translateX(-50%)",
-            width: "25.5%",
-            aspectRatio: "3.4 / 1",
+            width: "23%",
+            aspectRatio: "3.45 / 1",
             borderRadius: 999,
             background: "#050507",
             boxShadow:
