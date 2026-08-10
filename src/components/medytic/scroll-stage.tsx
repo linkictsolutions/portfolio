@@ -4,13 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { PhoneFrame } from "@/components/device-frame";
-import { medyAccent, medyBrief, medyScreens } from "@/content/medytic";
+import { medyAccent, medyBrief, medyStageScreens } from "@/content/medytic";
 
 /** Pinned scroll stage: real screens morph as you scroll. Type supports — never covers UI. */
 export function MedyScrollStage() {
   const sectionRef = useRef<HTMLElement>(null);
   const [index, setIndex] = useState(0);
   const [pinned, setPinned] = useState(false);
+  const screens = medyStageScreens;
 
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -23,7 +24,7 @@ export function MedyScrollStage() {
       ScrollTrigger.create({
         trigger: section,
         start: "top top",
-        end: () => `+=${medyScreens.length * 70}%`,
+        end: () => `+=${screens.length * 70}%`,
         pin: true,
         scrub: 0.65,
         onEnter: () => setPinned(true),
@@ -32,8 +33,8 @@ export function MedyScrollStage() {
         onLeaveBack: () => setPinned(false),
         onUpdate: (self) => {
           const i = Math.min(
-            medyScreens.length - 1,
-            Math.floor(self.progress * medyScreens.length),
+            screens.length - 1,
+            Math.floor(self.progress * screens.length),
           );
           setIndex(i);
         },
@@ -48,9 +49,9 @@ export function MedyScrollStage() {
       window.removeEventListener("lenis-scroll", onScroll);
       ctx.revert();
     };
-  }, []);
+  }, [screens.length]);
 
-  const screen = medyScreens[index];
+  const screen = screens[index];
 
   return (
     <section
@@ -64,16 +65,16 @@ export function MedyScrollStage() {
         overflow: "hidden",
       }}
     >
-      {/* Atmosphere */}
+      {/* Atmosphere — tighter glow so stage feels fuller */}
       <div
         aria-hidden
         style={{
           position: "absolute",
-          inset: "-20%",
+          inset: "-10%",
           background: `
-            radial-gradient(ellipse 50% 40% at 20% 30%, ${medyAccent}55, transparent 60%),
-            radial-gradient(ellipse 45% 35% at 80% 70%, #12C84933, transparent 55%),
-            radial-gradient(ellipse 40% 40% at 50% 100%, #7b3cff22, transparent 50%)
+            radial-gradient(ellipse 55% 50% at 70% 45%, ${medyAccent}40, transparent 58%),
+            radial-gradient(ellipse 40% 40% at 15% 60%, #12C84928, transparent 55%),
+            radial-gradient(ellipse 35% 30% at 50% 0%, #7b3cff20, transparent 50%)
           `,
           pointerEvents: "none",
         }}
@@ -83,54 +84,53 @@ export function MedyScrollStage() {
         style={{
           position: "relative",
           zIndex: 1,
-          maxWidth: 1600,
+          maxWidth: 1480,
           margin: "0 auto",
           minHeight: "100svh",
-          padding: "clamp(5rem, 10vw, 6.5rem) clamp(1.25rem, 4vw, 3.5rem) clamp(2rem, 4vw, 3rem)",
+          padding: "clamp(4.5rem, 8vw, 5.5rem) clamp(1.25rem, 3vw, 2.5rem) clamp(1.25rem, 3vw, 2rem)",
           display: "grid",
-          gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 380px)",
-          gap: "clamp(1.5rem, 4vw, 3.5rem)",
+          gridTemplateColumns: "minmax(0, 0.85fr) minmax(300px, 460px)",
+          gap: "clamp(1.25rem, 3vw, 2.5rem)",
           alignItems: "center",
         }}
         className="medy-stage-grid"
       >
-        <div>
-          <p className="text-label" style={{ color: medyAccent, marginBottom: "1rem" }}>
+        <div style={{ maxWidth: 520 }}>
+          <p className="text-label" style={{ color: medyAccent, marginBottom: "0.75rem" }}>
             {medyBrief.tags.join(" · ")} · {medyBrief.year}
           </p>
           <h1
             className="text-display"
-            style={{ fontSize: "clamp(3rem, 10vw, 7.5rem)", margin: 0, lineHeight: 0.88 }}
+            style={{ fontSize: "clamp(2.75rem, 8vw, 6.25rem)", margin: 0, lineHeight: 0.9 }}
           >
             {medyBrief.title}
             <span style={{ color: medyAccent }}>.</span>
           </h1>
           <p
             style={{
-              marginTop: "1.25rem",
-              fontSize: "clamp(1.05rem, 2vw, 1.4rem)",
-              maxWidth: 420,
+              marginTop: "1rem",
+              fontSize: "clamp(1rem, 1.7vw, 1.3rem)",
               lineHeight: 1.35,
-              opacity: 0.85,
+              opacity: 0.88,
             }}
           >
             {medyBrief.subtitle}
           </p>
           <p
             style={{
-              marginTop: "1.5rem",
-              maxWidth: 440,
-              fontSize: "0.98rem",
-              lineHeight: 1.55,
-              opacity: 0.65,
+              marginTop: "1rem",
+              fontSize: "0.95rem",
+              lineHeight: 1.5,
+              opacity: 0.62,
             }}
           >
             {medyBrief.line}
           </p>
 
-          <div style={{ marginTop: "2.25rem" }}>
+          <div style={{ marginTop: "1.75rem" }}>
             <div className="text-label" style={{ opacity: 0.45, marginBottom: 8 }}>
-              {(index + 1).toString().padStart(2, "0")} / {medyScreens.length.toString().padStart(2, "0")}
+              {(index + 1).toString().padStart(2, "0")} /{" "}
+              {screens.length.toString().padStart(2, "0")}
               {pinned ? " · scroll" : ""}
             </div>
             <div
@@ -140,17 +140,16 @@ export function MedyScrollStage() {
                 paddingLeft: 14,
               }}
             >
-              <div className="text-display" style={{ fontSize: "clamp(1.4rem, 3vw, 2rem)" }}>
+              <div className="text-display" style={{ fontSize: "clamp(1.35rem, 2.8vw, 1.9rem)" }}>
                 {screen.label}
               </div>
-              <p style={{ margin: "0.5rem 0 0", opacity: 0.7, fontSize: "0.95rem", lineHeight: 1.45 }}>
+              <p style={{ margin: "0.45rem 0 0", opacity: 0.7, fontSize: "0.95rem", lineHeight: 1.45 }}>
                 {screen.caption}
               </p>
             </div>
 
-            {/* Progress ticks — also clickable for reduced-motion / jump */}
-            <div style={{ display: "flex", gap: 6, marginTop: 22, flexWrap: "wrap" }}>
-              {medyScreens.map((s, i) => (
+            <div style={{ display: "flex", gap: 6, marginTop: 18, flexWrap: "wrap" }}>
+              {screens.map((s, i) => (
                 <button
                   key={s.id}
                   type="button"
@@ -173,8 +172,15 @@ export function MedyScrollStage() {
           </div>
         </div>
 
-        <div style={{ width: "100%", maxWidth: 360, margin: "0 auto", position: "relative" }}>
-          <PhoneFrame>
+        <div
+          style={{
+            width: "100%",
+            maxWidth: 460,
+            margin: "0 auto",
+            position: "relative",
+          }}
+        >
+          <PhoneFrame metallic cropBottom={0.14}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               key={screen.src}

@@ -1,5 +1,6 @@
 export const medyAccent = "#1987EE";
 
+/** Full set for expand gallery (includes appointment detail). */
 export const medyScreens = [
   {
     id: "overview-family",
@@ -44,16 +45,16 @@ export const medyScreens = [
     caption: "Growth loop that still feels like care, not spam.",
   },
   {
-    id: "devices",
-    src: "/projects/medytic/add-device.png",
-    label: "Add Device",
-    caption: "Wearable connect — clear success and disconnect states.",
-  },
-  {
     id: "connected",
     src: "/projects/medytic/connected-devices.png",
     label: "Connected Devices",
     caption: "Inventory of what the family is already wearing.",
+  },
+  {
+    id: "devices",
+    src: "/projects/medytic/add-device.png",
+    label: "Add Device",
+    caption: "Wearable connect — clear success and disconnect states.",
   },
   {
     id: "family-mgmt",
@@ -62,6 +63,15 @@ export const medyScreens = [
     caption: "Settings that treat family as a first-class mode.",
   },
 ] as const;
+
+/**
+ * Scroll-stage sequence only.
+ * — no appointment detail
+ * — Connected Devices before Add Device
+ */
+export const medyStageScreens = medyScreens.filter(
+  (s) => s.id !== "appointment-details",
+);
 
 export const medyBrief = {
   title: "MedyTic",
