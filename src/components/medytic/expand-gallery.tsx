@@ -14,8 +14,12 @@ import { medyAccent, medyScreens, type MedyScreen } from "@/content/medytic";
 /** Phone screens only — appointment detail is a modal panel, shown in Appointments. */
 const REEL = medyScreens.filter((s) => s.fit !== "panel");
 const PHONE_W = 255;
-/** Gentle continuous drift (px / second) */
+/** Cruise speed while auto-drifting (px / second) */
 const AUTO_SPEED = 36;
+/** How quickly speed eases toward target (higher = snappier) */
+const SPEED_SMOOTH = 3.2;
+/** Wheel / drag glide friction per second */
+const GLIDE_FRICTION = 3.8;
 
 /**
  * Decision reel:
@@ -26,91 +30,69 @@ export function MedyExpandGallery() {
   const reduced = useReducedMotion();
   const sectionRef = useRef<HTMLElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
-  const scrollingRef = useRef(false);
-  const pausedRef = useRef(false);
-  const inViewRef = useRef(false);
   const focusRef = useRef(0);
   const expandedRef = useRef(false);
+  const inViewRef = useRef(false);
+  /** false while pointer is over the reel — auto speed eases to 0 */
+  const wantAutoRef = useRef(true);
+  const speedRef = useRef(0);
+  const glideRef = useRef(0);
+  const targetLeftRef = useRef<number | null>(null);
 
   const [focus, setFocus] = useState(0);
   const [expanded, setExpanded] = useState<MedyScreen | null>(null);
   const [expandDir, setExpandDir] = useState<1 | -1>(1);
-  const [drifting, setDrifting] = useState(true);
+  const [pointerIn, setPointerIn] = useState(false);
 
   focusRef.current = focus;
   expandedRef.current = expanded !== null;
 
-  const scrollToIndex = useCallback(
-    (index: number, smooth = true) => {
-      const track = trackRef.current;
-      if (!track) return;
-      const next = Math.max(0, Math.min(REEL.length - 1, index));
-      const el = track.querySelector<HTMLElement>(
-        `[data-reel-index="${next}"]`,
-      );
-      if (!el) return;
-
-      scrollingRef.current = true;
-      setFocus(next);
-      focusRef.current = next;
-
-      const left =
-        el.offsetLeft - (track.clientWidth / 2 - el.offsetWidth / 2);
-      track.scrollTo({
-        left: Math.max(0, left),
-        behavior: reduced || !smooth ? "auto" : "smooth",
-      });
-
-      window.setTimeout(
-        () => {
-          scrollingRef.current = false;
-        },
-        reduced || !smooth ? 40 : 480,
-      );
-    },
-    [reduced],
-  );
-
-  // Focus follows horizontal scroll (skip while programmatic snap)
-  useEffect(() => {
-    const track = trackRef.current;
-    if (!track) return;
-
-    let raf = 0;
-    const onScroll = () => {
-      if (scrollingRef.current) return;
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const center = track.scrollLeft + track.clientWidth / 2;
-        let best = 0;
-        let bestDist = Infinity;
-        track.querySelectorAll<HTMLElement>("[data-reel-index]").forEach((el) => {
-          const mid = el.offsetLeft + el.offsetWidth / 2;
-          const d = Math.abs(mid - center);
-          if (d < bestDist) {
-            bestDist = d;
-            best = Number(el.dataset.reelIndex);
-          }
-        });
-        if (best !== focusRef.current) {
-          setFocus(best);
-          focusRef.current = best;
-        }
-      });
-    };
-
-    track.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      cancelAnimationFrame(raf);
-      track.removeEventListener("scroll", onScroll);
-    };
+  const syncFocus = useCallback((track: HTMLElement) => {
+    const center = track.scrollLeft + track.clientWidth / 2;
+    let best = 0;
+    let bestDist = Infinity;
+    track.querySelectorAll<HTMLElement>("[data-reel-index]").forEach((el) => {
+      const mid = el.offsetLeft + el.offsetWidth / 2;
+      const d = Math.abs(mid - center);
+      if (d < bestDist) {
+        bestDist = d;
+        best = Number(el.dataset.reelIndex);
+      }
+    });
+    if (best !== focusRef.current) {
+      setFocus(best);
+      focusRef.current = best;
+    }
   }, []);
 
-  // Continuous gentle drift — ignore user scroll unless the pointer is in the reel
+  const scrollToIndex = useCallback((index: number) => {
+    const track = trackRef.current;
+    if (!track) return;
+    const next = Math.max(0, Math.min(REEL.length - 1, index));
+    const el = track.querySelector<HTMLElement>(
+      `[data-reel-index="${next}"]`,
+    );
+    if (!el) return;
+
+    wantAutoRef.current = false;
+    setPointerIn(true);
+    setFocus(next);
+    focusRef.current = next;
+    glideRef.current = 0;
+
+    const left = el.offsetLeft - (track.clientWidth / 2 - el.offsetWidth / 2);
+    targetLeftRef.current = Math.max(
+      0,
+      Math.min(left, track.scrollWidth - track.clientWidth),
+    );
+  }, []);
+
+  // Unified motion loop: soft auto-drift, soft stop, and inertial manual glide
   useEffect(() => {
     if (reduced) return;
     const section = sectionRef.current;
-    if (!section) return;
+    const track = trackRef.current;
+    if (!section || !track) return;
 
     const io = new IntersectionObserver(
       ([entry]) => {
@@ -120,62 +102,100 @@ export function MedyExpandGallery() {
     );
     io.observe(section);
 
-    const track = trackRef.current;
-    const blockWheel = (e: WheelEvent) => {
-      if (pausedRef.current || expandedRef.current) return;
+    const onWheel = (e: WheelEvent) => {
+      if (expandedRef.current) return;
       e.preventDefault();
+
+      // Only hand control to the user after pointer enter (or arrows already paused)
+      if (wantAutoRef.current) return;
+
+      targetLeftRef.current = null;
+      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      // Impulse — then friction eases it out (no step-snap)
+      glideRef.current += delta * 1.15;
+      glideRef.current = Math.max(-2200, Math.min(2200, glideRef.current));
     };
-    const blockTouch = (e: TouchEvent) => {
-      if (pausedRef.current || expandedRef.current) return;
-      e.preventDefault();
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (wantAutoRef.current && !expandedRef.current) e.preventDefault();
     };
-    track?.addEventListener("wheel", blockWheel, { passive: false });
-    track?.addEventListener("touchmove", blockTouch, { passive: false });
+
+    track.addEventListener("wheel", onWheel, { passive: false });
+    track.addEventListener("touchmove", onTouchMove, { passive: false });
 
     let raf = 0;
     let last = performance.now();
 
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick);
-      const raw = now - last;
+      const dt = Math.min(now - last, 34) / 1000;
       last = now;
-      const dt = Math.min(raw, 34);
       const el = trackRef.current;
       if (!el) return;
-
-      const shouldDrift =
-        inViewRef.current &&
-        !pausedRef.current &&
-        !expandedRef.current &&
-        !scrollingRef.current;
-
-      if (!shouldDrift) return;
 
       const max = el.scrollWidth - el.clientWidth;
       if (max <= 0) return;
 
-      let next = el.scrollLeft + (AUTO_SPEED * dt) / 1000;
-      if (next >= max - 0.5) next = 0;
+      // Ease auto cruise speed toward target (soft stop / soft start)
+      const cruise =
+        wantAutoRef.current &&
+        inViewRef.current &&
+        !expandedRef.current
+          ? AUTO_SPEED
+          : 0;
+      const k = 1 - Math.exp(-SPEED_SMOOTH * dt);
+      speedRef.current += (cruise - speedRef.current) * k;
+
+      // Arrow / dot target — ease scrollLeft toward it
+      if (targetLeftRef.current !== null) {
+        const target = targetLeftRef.current;
+        const dist = target - el.scrollLeft;
+        if (Math.abs(dist) < 0.4) {
+          el.scrollLeft = target;
+          targetLeftRef.current = null;
+        } else {
+          el.scrollLeft += dist * (1 - Math.exp(-7.5 * dt));
+        }
+        syncFocus(el);
+        return;
+      }
+
+      // Manual wheel glide with exponential friction
+      const friction = Math.exp(-GLIDE_FRICTION * dt);
+      glideRef.current *= friction;
+      if (Math.abs(glideRef.current) < 2) glideRef.current = 0;
+
+      const dx = speedRef.current * dt + glideRef.current * dt;
+      if (Math.abs(dx) < 0.01 && cruise === 0 && glideRef.current === 0) {
+        return;
+      }
+
+      let next = el.scrollLeft + dx;
+      if (next >= max - 0.5) next = wantAutoRef.current ? 0 : max;
+      if (next < 0) next = 0;
       el.scrollLeft = next;
+      syncFocus(el);
     };
 
     raf = requestAnimationFrame(tick);
     return () => {
       io.disconnect();
       cancelAnimationFrame(raf);
-      track?.removeEventListener("wheel", blockWheel);
-      track?.removeEventListener("touchmove", blockTouch);
+      track.removeEventListener("wheel", onWheel);
+      track.removeEventListener("touchmove", onTouchMove);
     };
-  }, [reduced]);
+  }, [reduced, syncFocus]);
 
   function pauseDrift() {
-    pausedRef.current = true;
-    setDrifting(false);
+    wantAutoRef.current = false;
+    setPointerIn(true);
   }
 
   function resumeDrift() {
-    pausedRef.current = false;
-    setDrifting(true);
+    wantAutoRef.current = true;
+    glideRef.current = 0;
+    targetLeftRef.current = null;
+    setPointerIn(false);
   }
   useEffect(() => {
     if (!expanded) return;
@@ -312,20 +332,14 @@ export function MedyExpandGallery() {
         >
           <RailButton
             label="Previous screen"
-            onClick={() => {
-              pauseDrift();
-              scrollToIndex(focus - 1);
-            }}
+            onClick={() => scrollToIndex(focus - 1)}
             disabled={focus === 0}
           >
             ←
           </RailButton>
           <RailButton
             label="Next screen"
-            onClick={() => {
-              pauseDrift();
-              scrollToIndex(focus + 1);
-            }}
+            onClick={() => scrollToIndex(focus + 1)}
             disabled={focus === REEL.length - 1}
           >
             →
@@ -345,10 +359,7 @@ export function MedyExpandGallery() {
               <button
                 key={s.id}
                 type="button"
-                onClick={() => {
-                  pauseDrift();
-                  scrollToIndex(i);
-                }}
+                onClick={() => scrollToIndex(i)}
                 style={{
                   width: i === focus ? 18 : 7,
                   height: 7,
@@ -378,13 +389,14 @@ export function MedyExpandGallery() {
           gap: "clamp(1rem, 2vw, 1.4rem)",
           overflowX: "auto",
           overflowY: "hidden",
-          scrollSnapType: drifting ? "none" : "x mandatory",
+          // No snap — inertia + easing handles “gentle slide”
+          scrollSnapType: "none",
           scrollPaddingInline: `max(1.25rem, calc((100vw - ${PHONE_W}px) / 2))`,
           paddingInline: `max(1.25rem, calc((100vw - ${PHONE_W}px) / 2))`,
           paddingTop: 48,
           paddingBottom: 52,
           WebkitOverflowScrolling: "touch",
-          touchAction: drifting ? "none" : "pan-x",
+          touchAction: pointerIn ? "pan-x" : "none",
         }}
       >
         {REEL.map((s, i) => {
