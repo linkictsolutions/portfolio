@@ -67,7 +67,12 @@ export function MedyAppointmentSystem() {
   const visible = TICKETS.filter((t) => filter === "all" || t.status === filter);
 
   function pick(id: string) {
+    const y = window.scrollY;
     setSelected((prev) => (prev === id ? null : id));
+    // Keep viewport locked — opening the in-phone modal must not scroll the page
+    requestAnimationFrame(() => {
+      if (window.scrollY !== y) window.scrollTo(0, y);
+    });
   }
 
   return (
@@ -189,7 +194,7 @@ export function MedyAppointmentSystem() {
                 maxWidth: 520,
               }}
             >
-              <AnimatePresence mode="popLayout">
+              <AnimatePresence mode="sync">
                 {visible.map((t, i) => {
                   const st = STATUS[t.status];
                   const isOn = selected === t.id;
@@ -197,13 +202,12 @@ export function MedyAppointmentSystem() {
                     <motion.button
                       key={t.id}
                       type="button"
-                      layout={!reduced}
                       data-cursor="view"
                       data-cursor-label={isOn ? "Close" : "Open"}
                       onClick={() => pick(t.id)}
                       initial={reduced ? false : { opacity: 0, y: 12 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={reduced ? undefined : { opacity: 0, scale: 0.98 }}
+                      exit={reduced ? undefined : { opacity: 0 }}
                       transition={{ delay: reduced ? 0 : i * 0.04, duration: 0.3 }}
                       style={{
                         display: "grid",
@@ -273,58 +277,52 @@ export function MedyAppointmentSystem() {
               </AnimatePresence>
             </div>
 
-            {/* Action strip — only when a ticket is open */}
-            <AnimatePresence>
-              {open && active && (
-                <motion.div
-                  initial={reduced ? false : { opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={reduced ? undefined : { opacity: 0, y: 6 }}
-                  style={{ marginTop: "1.35rem", maxWidth: 520 }}
-                >
-                  <p
-                    className="text-label"
-                    style={{ opacity: 0.45, marginBottom: 10 }}
+            {/* Action strip — always mounted so the phone column never jumps */}
+            <div style={{ marginTop: "1.35rem", maxWidth: 520 }}>
+              <p
+                className="text-label"
+                style={{
+                  opacity: open ? 0.45 : 0.28,
+                  marginBottom: 10,
+                  transition: "opacity 0.25s",
+                }}
+              >
+                Detail actions
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {ACTIONS.map((a, i) => (
+                  <span
+                    key={a}
+                    style={{
+                      borderRadius: 12,
+                      padding: "10px 14px",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      background:
+                        open && i === 0
+                          ? `linear-gradient(90deg, ${medyAccent}, #2bb8c8)`
+                          : "rgba(255,255,255,0.08)",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      color: open ? "#fff" : "rgba(238,243,251,0.35)",
+                      opacity: open ? 1 : 0.55,
+                      transition: "opacity 0.25s, color 0.25s, background 0.25s",
+                    }}
                   >
-                    Detail actions
-                  </p>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                    {ACTIONS.map((a, i) => (
-                      <motion.span
-                        key={a}
-                        initial={reduced ? false : { opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.08 + i * 0.06 }}
-                        style={{
-                          borderRadius: 12,
-                          padding: "10px 14px",
-                          fontSize: 12,
-                          fontWeight: 700,
-                          background:
-                            i === 0
-                              ? `linear-gradient(90deg, ${medyAccent}, #2bb8c8)`
-                              : "rgba(255,255,255,0.08)",
-                          border: "1px solid rgba(255,255,255,0.12)",
-                          color: "#fff",
-                        }}
-                      >
-                        {a}
-                      </motion.span>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                    {a}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
 
-          {/* Single device — list + sheet */}
+          {/* Single device — fixed in column; modal is absolute inside the screen */}
           <div
             style={{
               width: "100%",
               maxWidth: 300,
               margin: "0 auto",
-              position: "sticky",
-              top: "1.25rem",
+              alignSelf: "start",
+              position: "relative",
             }}
           >
             <PhoneFrame finish="black-metal">
@@ -373,8 +371,6 @@ export function MedyAppointmentSystem() {
                   {open && (
                     <motion.div
                       key="modal"
-                      role="dialog"
-                      aria-modal="true"
                       aria-label="Appointment detail"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
@@ -495,9 +491,10 @@ export function MedyAppointmentSystem() {
                 marginTop: 14,
                 opacity: 0.4,
                 letterSpacing: "0.1em",
+                minHeight: 18,
               }}
             >
-              {open ? "Detail · centered modal" : "Pick a ticket or tap a card"}
+              {open ? "Detail open" : "Pick a ticket or tap a card"}
             </p>
           </div>
         </div>
