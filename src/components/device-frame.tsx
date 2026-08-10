@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-type PhoneDevice = "iphone" | "s23-ultra";
+type PhoneDevice = "iphone" | "s23-ultra" | "galaxy-s23";
 type PhoneFinish = "matte" | "black-metal" | "burgundy";
 
 type PhoneFrameProps = {
@@ -17,7 +17,39 @@ type PhoneFrameProps = {
   cropBottom?: number;
 };
 
+function deviceGeometry(device: PhoneDevice) {
+  switch (device) {
+    case "galaxy-s23":
+      // Shorter than Ultra — wider relative to height so it can scale larger in-frame
+      return {
+        aspect: "9 / 19.5",
+        radius: 32,
+        screenRadius: 24,
+        padding: 9,
+        punchHole: true,
+      };
+    case "s23-ultra":
+      return {
+        aspect: "320 / 700",
+        radius: 28,
+        screenRadius: 20,
+        padding: 9,
+        punchHole: true,
+      };
+    default:
+      return {
+        aspect: "320 / 660",
+        radius: 44,
+        screenRadius: 34,
+        padding: 10,
+        punchHole: false,
+      };
+  }
+}
+
 function shellStyles(finish: PhoneFinish, device: PhoneDevice) {
+  const geo = deviceGeometry(device);
+
   if (finish === "burgundy") {
     return {
       background: `
@@ -51,58 +83,51 @@ function shellStyles(finish: PhoneFinish, device: PhoneDevice) {
           transparent 100%
         )
       `,
-      radius: device === "s23-ultra" ? 28 : 44,
-      screenRadius: device === "s23-ultra" ? 20 : 34,
-      aspect: device === "s23-ultra" ? "320 / 700" : "320 / 660",
-      padding: device === "s23-ultra" ? 9 : 11,
+      ...geo,
     };
   }
 
-  if (finish === "black-metal" || finish === "matte") {
-    const metallic = finish === "black-metal";
+  if (finish === "black-metal") {
     return {
-      background: metallic
-        ? `linear-gradient(
-            150deg,
-            #3a3a42 0%,
-            #1a1a1f 18%,
-            #0a0a0c 34%,
-            #2e2e36 48%,
-            #121216 62%,
-            #404048 78%,
-            #16161c 100%
-          )`
-        : "linear-gradient(160deg, #2a2a30, #0a0a0c)",
-      boxShadow: metallic
-        ? `
-          0 40px 80px -24px rgba(0,0,0,0.7),
-          0 0 0 1px rgba(255,255,255,0.22),
-          0 0 28px -6px rgba(25,135,238,0.25),
-          inset 0 1px 0 rgba(255,255,255,0.28),
-          inset 0 -1px 3px rgba(0,0,0,0.55)
-        `
-        : "0 40px 80px -30px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.06)",
-      shine: metallic
-        ? `
-          linear-gradient(
-            118deg,
-            transparent 0%,
-            transparent 42%,
-            rgba(255,255,255,0.38) 48%,
-            rgba(255,255,255,0.05) 51%,
-            transparent 58%,
-            transparent 100%
-          )
-        `
-        : null,
-      radius: device === "s23-ultra" ? 28 : 44,
-      screenRadius: device === "s23-ultra" ? 20 : 34,
-      aspect: device === "s23-ultra" ? "320 / 700" : "320 / 660",
-      padding: metallic || device === "s23-ultra" ? 10 : 10,
+      background: `linear-gradient(
+        150deg,
+        #3a3a42 0%,
+        #1a1a1f 18%,
+        #0a0a0c 34%,
+        #2e2e36 48%,
+        #121216 62%,
+        #404048 78%,
+        #16161c 100%
+      )`,
+      boxShadow: `
+        0 40px 80px -24px rgba(0,0,0,0.7),
+        0 0 0 1px rgba(255,255,255,0.22),
+        0 0 28px -6px rgba(25,135,238,0.25),
+        inset 0 1px 0 rgba(255,255,255,0.28),
+        inset 0 -1px 3px rgba(0,0,0,0.55)
+      `,
+      shine: `
+        linear-gradient(
+          118deg,
+          transparent 0%,
+          transparent 42%,
+          rgba(255,255,255,0.38) 48%,
+          rgba(255,255,255,0.05) 51%,
+          transparent 58%,
+          transparent 100%
+        )
+      `,
+      ...geo,
     };
   }
 
-  return shellStyles("matte", device);
+  return {
+    background: "linear-gradient(160deg, #2a2a30, #0a0a0c)",
+    boxShadow:
+      "0 40px 80px -30px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.06)",
+    shine: null as string | null,
+    ...geo,
+  };
 }
 
 /** Realistic phone shell. Content fills the screen area. */
@@ -117,7 +142,6 @@ export function PhoneFrame({
   const resolvedFinish: PhoneFinish =
     finish ?? (metallic ? "black-metal" : "matte");
   const shell = shellStyles(resolvedFinish, device);
-  const isS23 = device === "s23-ultra";
   const showShine = Boolean(shell.shine);
 
   return (
@@ -161,7 +185,6 @@ export function PhoneFrame({
               opacity: resolvedFinish === "burgundy" ? 0.9 : 0.7,
             }}
           />
-          {/* Secondary soft reflection along the left edge */}
           {resolvedFinish === "burgundy" && (
             <div
               aria-hidden
@@ -183,17 +206,17 @@ export function PhoneFrame({
         </>
       )}
 
-      {/* Camera: S23 punch-hole (doesn't cover header text) vs iPhone island */}
-      {isS23 ? (
+      {/* Camera: Android punch-hole vs iPhone island */}
+      {shell.punchHole ? (
         <div
           aria-hidden
           style={{
             position: "absolute",
-            top: 14,
+            top: 12,
             left: "50%",
             transform: "translateX(-50%)",
-            width: 11,
-            height: 11,
+            width: 10,
+            height: 10,
             borderRadius: 999,
             background: "radial-gradient(circle at 35% 35%, #2a2a30, #050507 70%)",
             boxShadow:
