@@ -221,19 +221,19 @@ export function PhoneFrame({
           aria-hidden
           style={{
             position: "absolute",
-            // Centered in the status-bar band of the display (inside bezel)
-            top: `calc(${shell.padding}px + 1.6%)`,
+            // Status-bar scale: ~3.2% of frame width (~11–12px at 360)
+            top: `calc(${shell.padding}px + 2.1%)`,
             left: "50%",
             transform: "translateX(-50%)",
-            width: "5.4%",
+            width: "3.2%",
             aspectRatio: "1",
             borderRadius: 999,
             background:
               "radial-gradient(circle at 32% 30%, #4a4a52 0%, #1a1a1e 45%, #050507 75%)",
             boxShadow:
               resolvedFinish === "burgundy"
-                ? "0 0 0 2px rgba(20,8,12,0.9), 0 0 0 3.5px rgba(255,200,210,0.22)"
-                : "0 0 0 2px rgba(0,0,0,0.7), 0 0 0 3px rgba(255,255,255,0.1)",
+                ? "0 0 0 1.5px rgba(20,8,12,0.9), 0 0 0 2.5px rgba(255,200,210,0.2)"
+                : "0 0 0 1.5px rgba(0,0,0,0.7), 0 0 0 2.5px rgba(255,255,255,0.1)",
             zIndex: 5,
           }}
         />
