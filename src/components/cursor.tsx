@@ -102,7 +102,7 @@ export function Cursor() {
         position: "fixed",
         top: 0,
         left: 0,
-        zIndex: 100,
+        zIndex: 10000,
         pointerEvents: "none",
         width: size,
         height: size,

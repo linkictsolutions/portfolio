@@ -376,91 +376,128 @@ export function MedyExpandGallery() {
         </div>
       </div>
 
-      {/* Padding inside the scrollport so device shadows aren't clipped */}
-      <div
-        ref={trackRef}
-        className="medy-reel"
-        onPointerEnter={pauseDrift}
-        onPointerLeave={resumeDrift}
-        style={{
-          marginTop: "0.35rem",
-          display: "flex",
-          alignItems: "center",
-          gap: "clamp(1rem, 2vw, 1.4rem)",
-          overflowX: "auto",
-          overflowY: "hidden",
-          // No snap — inertia + easing handles “gentle slide”
-          scrollSnapType: "none",
-          scrollPaddingInline: `max(1.25rem, calc((100vw - ${PHONE_W}px) / 2))`,
-          paddingInline: `max(1.25rem, calc((100vw - ${PHONE_W}px) / 2))`,
-          paddingTop: 48,
-          paddingBottom: 52,
-          WebkitOverflowScrolling: "touch",
-          touchAction: pointerIn ? "pan-x" : "none",
-        }}
-      >
-        {REEL.map((s, i) => {
-          const isFocus = i === focus;
-          return (
-            <button
-              key={s.id}
-              type="button"
-              data-reel-index={i}
-              data-cursor="view"
-              data-cursor-label="Expand"
-              aria-label={`Expand ${s.label}`}
-              onClick={() => {
-                pauseDrift();
-                setFocus(i);
-                setExpandDir(1);
-                setExpanded(s);
-              }}
-              style={{
-                flex: "0 0 auto",
-                width: PHONE_W,
-                scrollSnapAlign: "center",
-                border: "none",
-                background: "transparent",
-                padding: 0,
-                cursor: "pointer",
-                textAlign: "left",
-                opacity: isFocus ? 1 : 0.52,
-                transform: isFocus ? "scale(1)" : "scale(0.94)",
-                transformOrigin: "center center",
-                transition: "opacity 0.45s ease, transform 0.45s ease",
-                willChange: "transform, opacity",
-              }}
-            >
-              <PhoneFrame finish="black-metal" screenBg="#f3f4f6">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={s.src}
-                  alt={s.label}
-                  loading="lazy"
-                  draggable={false}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    objectPosition: "top center",
-                    display: "block",
-                    pointerEvents: "none",
-                  }}
-                />
-              </PhoneFrame>
-              <div
-                className="text-label"
+      <div style={{ position: "relative" }}>
+        <div
+          ref={trackRef}
+          className="medy-reel"
+          onPointerEnter={pauseDrift}
+          onPointerLeave={resumeDrift}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "clamp(1rem, 2vw, 1.4rem)",
+            overflowX: "auto",
+            overflowY: "hidden",
+            scrollSnapType: "none",
+            scrollPaddingInline: `max(1.25rem, calc((100vw - ${PHONE_W}px) / 2))`,
+            paddingInline: `max(1.25rem, calc((100vw - ${PHONE_W}px) / 2))`,
+            paddingTop: 64,
+            paddingBottom: 80,
+            WebkitOverflowScrolling: "touch",
+            touchAction: pointerIn ? "pan-x" : "none",
+          }}
+        >
+          {REEL.map((s, i) => {
+            const isFocus = i === focus;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                data-reel-index={i}
+                data-cursor="view"
+                data-cursor-label="Expand"
+                aria-label={`Expand ${s.label}`}
+                onClick={() => {
+                  pauseDrift();
+                  setFocus(i);
+                  setExpandDir(1);
+                  setExpanded(s);
+                }}
                 style={{
-                  marginTop: 10,
-                  opacity: isFocus ? 0.7 : 0.35,
-                  transition: "opacity 0.3s",
+                  flex: "0 0 auto",
+                  width: PHONE_W,
+                  border: "none",
+                  background: "transparent",
+                  padding: 0,
+                  cursor: "pointer",
+                  textAlign: "left",
+                  // No transform here — transform on a button clips child box-shadows
+                  overflow: "visible",
                 }}
               >
-                {(i + 1).toString().padStart(2, "0")} · {s.label}
-              </div>
-            </button>
-          );
-        })}
+                <div
+                  style={{
+                    padding: "36px 18px 44px",
+                    margin: "-36px -18px -20px",
+                    opacity: isFocus ? 1 : 0.52,
+                    transform: isFocus ? "scale(1)" : "scale(0.94)",
+                    transformOrigin: "center center",
+                    transition: "opacity 0.45s ease, transform 0.45s ease",
+                    overflow: "visible",
+                  }}
+                >
+                  <PhoneFrame finish="black-metal" screenBg="#f3f4f6">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={s.src}
+                      alt={s.label}
+                      loading="lazy"
+                      draggable={false}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        objectPosition: "top center",
+                        display: "block",
+                        pointerEvents: "none",
+                      }}
+                    />
+                  </PhoneFrame>
+                </div>
+                <div
+                  className="text-label"
+                  style={{
+                    marginTop: 2,
+                    opacity: isFocus ? 0.7 : 0.35,
+                    transition: "opacity 0.3s",
+                  }}
+                >
+                  {(i + 1).toString().padStart(2, "0")} · {s.label}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <AnimatePresence>
+          {pointerIn && !expanded && (
+            <motion.p
+              key="explore-hint"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.3 }}
+              className="text-label"
+              style={{
+                position: "absolute",
+                left: "50%",
+                bottom: 18,
+                transform: "translateX(-50%)",
+                margin: 0,
+                padding: "8px 14px",
+                borderRadius: 999,
+                background: "rgba(11,11,13,0.8)",
+                color: "#f3efe6",
+                letterSpacing: "0.08em",
+                whiteSpace: "nowrap",
+                pointerEvents: "none",
+                zIndex: 2,
+              }}
+            >
+              ← Scroll or drag to explore →
+            </motion.p>
+          )}
+        </AnimatePresence>
       </div>
 
       <AnimatePresence>
@@ -470,7 +507,7 @@ export function MedyExpandGallery() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.28 }}
+            transition={{ duration: 0.22 }}
             style={{
               position: "fixed",
               inset: 0,
@@ -510,23 +547,22 @@ export function MedyExpandGallery() {
                 color: "#f3efe6",
               }}
             >
-              <div style={{ position: "relative", overflow: "hidden" }}>
-                <AnimatePresence mode="wait" custom={expandDir}>
+              <div style={{ position: "relative", overflow: "visible" }}>
+                <AnimatePresence mode="wait" initial={false}>
                   <motion.div
                     key={expanded.id}
-                    custom={expandDir}
                     initial={
                       reduced
                         ? { opacity: 0 }
-                        : { opacity: 0, x: expandDir * 56, scale: 0.96 }
+                        : { opacity: 0, x: expandDir * 36 }
                     }
-                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                    animate={{ opacity: 1, x: 0 }}
                     exit={
                       reduced
                         ? { opacity: 0 }
-                        : { opacity: 0, x: expandDir * -48, scale: 0.96 }
+                        : { opacity: 0, x: expandDir * -28 }
                     }
-                    transition={{ type: "spring", stiffness: 320, damping: 30 }}
+                    transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
                   >
                     <PhoneFrame finish="black-metal" screenBg="#f3f4f6">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -546,22 +582,21 @@ export function MedyExpandGallery() {
                 </AnimatePresence>
               </div>
 
-              <AnimatePresence mode="wait" custom={expandDir}>
+              <AnimatePresence mode="wait" initial={false}>
                 <motion.div
                   key={`${expanded.id}-copy`}
-                  custom={expandDir}
                   initial={
                     reduced
                       ? { opacity: 0 }
-                      : { opacity: 0, x: expandDir * 28 }
+                      : { opacity: 0, x: expandDir * 18 }
                   }
                   animate={{ opacity: 1, x: 0 }}
                   exit={
                     reduced
                       ? { opacity: 0 }
-                      : { opacity: 0, x: expandDir * -20 }
+                      : { opacity: 0, x: expandDir * -12 }
                   }
-                  transition={{ duration: 0.28 }}
+                  transition={{ duration: 0.26 }}
                 >
                   <p className="text-label" style={{ color: medyAccent }}>
                     Decision
