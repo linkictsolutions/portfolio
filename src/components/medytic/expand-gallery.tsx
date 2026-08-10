@@ -23,8 +23,8 @@ const GLIDE_FRICTION = 3.8;
 
 /**
  * Decision reel:
- * — Auto-drifts while in view (does not stop on hover)
- * — Click expands; expanded prev/next push-slides by direction
+ * — Auto-drifts while in view; eases to a pause on mouse enter
+ * — Click expands with open motion; expanded prev/next push-slides by direction
  */
 export function MedyExpandGallery() {
   const reduced = useReducedMotion();
@@ -33,8 +33,8 @@ export function MedyExpandGallery() {
   const focusRef = useRef(0);
   const expandedRef = useRef(false);
   const inViewRef = useRef(false);
-  /** Auto-drift stays on while section is in view — hover does not stop it */
-  const wantAutoRef = useRef(true);
+  /** Soft-pause cruise while pointer is over the reel */
+  const pausedByHoverRef = useRef(false);
   const speedRef = useRef(0);
   const glideRef = useRef(0);
   const targetLeftRef = useRef<number | null>(null);
@@ -46,7 +46,6 @@ export function MedyExpandGallery() {
 
   focusRef.current = focus;
   expandedRef.current = expanded !== null;
-  wantAutoRef.current = !expanded;
 
   const syncFocus = useCallback((track: HTMLElement) => {
     const center = track.scrollLeft + track.clientWidth / 2;
@@ -86,7 +85,7 @@ export function MedyExpandGallery() {
     );
   }, []);
 
-  // Unified motion loop: auto-drift + optional wheel glide (hover never kills cruise)
+  // Unified motion loop: auto-drift, soft hover pause, wheel glide
   useEffect(() => {
     if (reduced) return;
     const section = sectionRef.current;
@@ -104,6 +103,8 @@ export function MedyExpandGallery() {
     const onWheel = (e: WheelEvent) => {
       if (expandedRef.current) return;
       e.preventDefault();
+      // Hover (or any pointer over reel) — manual glide; cruise already easing down
+      if (!pausedByHoverRef.current) return;
       targetLeftRef.current = null;
       const delta =
         Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
@@ -127,7 +128,11 @@ export function MedyExpandGallery() {
       if (max <= 0) return;
 
       const cruise =
-        wantAutoRef.current && inViewRef.current ? AUTO_SPEED : 0;
+        inViewRef.current &&
+        !expandedRef.current &&
+        !pausedByHoverRef.current
+          ? AUTO_SPEED
+          : 0;
       const k = 1 - Math.exp(-SPEED_SMOOTH * dt);
       speedRef.current += (cruise - speedRef.current) * k;
 
@@ -168,6 +173,16 @@ export function MedyExpandGallery() {
     };
   }, [reduced, syncFocus]);
 
+  function pauseDrift() {
+    pausedByHoverRef.current = true;
+    setPointerIn(true);
+  }
+
+  function resumeDrift() {
+    pausedByHoverRef.current = false;
+    glideRef.current = 0;
+    setPointerIn(false);
+  }
   useEffect(() => {
     if (!expanded) return;
     const onKey = (e: KeyboardEvent) => {
@@ -249,7 +264,7 @@ export function MedyExpandGallery() {
                 lineHeight: 1.4,
               }}
             >
-              Auto-drifts while in view. Scroll the strip anytime, or click a phone to expand.
+              Auto-drifts when you arrive — hover pauses it so you can explore. Click a phone to expand.
             </p>
           </div>
 
@@ -351,8 +366,8 @@ export function MedyExpandGallery() {
         <div
           ref={trackRef}
           className="medy-reel"
-          onPointerEnter={() => setPointerIn(true)}
-          onPointerLeave={() => setPointerIn(false)}
+          onPointerEnter={pauseDrift}
+          onPointerLeave={resumeDrift}
           style={{
             display: "flex",
             alignItems: "center",
@@ -365,7 +380,7 @@ export function MedyExpandGallery() {
             paddingTop: 64,
             paddingBottom: 80,
             WebkitOverflowScrolling: "touch",
-            touchAction: "pan-x",
+            touchAction: pointerIn ? "pan-x" : "none",
           }}
         >
           {REEL.map((s, i) => {
@@ -379,6 +394,7 @@ export function MedyExpandGallery() {
                 data-cursor-label="Expand"
                 aria-label={`Expand ${s.label}`}
                 onClick={() => {
+                  pauseDrift();
                   setFocus(i);
                   setExpandDir(1);
                   setExpanded(s);
@@ -478,7 +494,7 @@ export function MedyExpandGallery() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.22 }}
+            transition={{ duration: 0.28 }}
             style={{
               position: "fixed",
               inset: 0,
@@ -503,9 +519,26 @@ export function MedyExpandGallery() {
               }}
             />
 
-            <div
+            <motion.div
               className="medy-lightbox"
               onClick={(e) => e.stopPropagation()}
+              initial={
+                reduced
+                  ? { opacity: 1 }
+                  : { opacity: 0, scale: 0.9, y: 36 }
+              }
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={
+                reduced
+                  ? { opacity: 0 }
+                  : { opacity: 0, scale: 0.96, y: 16 }
+              }
+              transition={{
+                type: "spring",
+                stiffness: 300,
+                damping: 28,
+                mass: 0.9,
+              }}
               style={{
                 position: "relative",
                 zIndex: 201,
@@ -516,6 +549,7 @@ export function MedyExpandGallery() {
                 maxWidth: 900,
                 width: "100%",
                 color: "#f3efe6",
+                transformOrigin: "center center",
               }}
             >
               <div style={{ position: "relative", overflow: "visible" }}>
@@ -645,7 +679,7 @@ export function MedyExpandGallery() {
                   </div>
                 </motion.div>
               </AnimatePresence>
-            </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
