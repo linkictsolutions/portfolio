@@ -119,8 +119,8 @@ export function MedyAppointmentSystem() {
                 fontSize: "0.95rem",
               }}
             >
-              Color-coded tickets pull the list into focus. Pick one — the detail
-              sheet lands on the same device, with Join / Reschedule / Calendar in reach.
+              Color-coded tickets pull the list into focus. Pick one — detail
+              pops centered on the same device, with Join / Reschedule / Calendar in reach.
             </p>
 
             {/* Status filters */}
@@ -347,8 +347,6 @@ export function MedyAppointmentSystem() {
                     objectFit: "cover",
                     objectPosition: "top center",
                     display: "block",
-                    filter: open ? "brightness(0.72)" : "none",
-                    transition: "filter 0.35s",
                   }}
                 />
 
@@ -374,89 +372,112 @@ export function MedyAppointmentSystem() {
                 <AnimatePresence>
                   {open && (
                     <motion.div
-                      key="sheet"
-                      initial={
-                        reduced
-                          ? { opacity: 1 }
-                          : { y: "108%", opacity: 0.6 }
-                      }
-                      animate={{ y: 0, opacity: 1 }}
-                      exit={
-                        reduced
-                          ? { opacity: 0 }
-                          : { y: "108%", opacity: 0.6 }
-                      }
-                      transition={{
-                        type: "spring",
-                        stiffness: 320,
-                        damping: 32,
-                      }}
+                      key="modal"
+                      role="dialog"
+                      aria-modal="true"
+                      aria-label="Appointment detail"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: reduced ? 0.15 : 0.28 }}
                       style={{
                         position: "absolute",
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        top: "8%",
+                        inset: 0,
                         zIndex: 6,
                         display: "flex",
-                        flexDirection: "column",
-                        borderRadius: "22px 22px 0 0",
-                        overflow: "hidden",
-                        background: "#eaf7ff",
-                        boxShadow: "0 -18px 40px rgba(0,0,0,0.35)",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "10% 6%",
                       }}
                     >
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "center",
-                          padding: "10px 0 6px",
-                          background: "#eaf7ff",
-                        }}
-                      >
-                        <span
-                          style={{
-                            width: 42,
-                            height: 4,
-                            borderRadius: 999,
-                            background: "rgba(0,0,0,0.18)",
-                          }}
-                        />
-                      </div>
-                      <div style={{ flex: 1, overflow: "auto" }}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src="/projects/medytic/appointment-details.png"
-                          alt={
-                            active
-                              ? `Detail · ${active.doctor}`
-                              : "Appointment detail"
-                          }
-                          style={{
-                            width: "100%",
-                            height: "auto",
-                            display: "block",
-                          }}
-                        />
-                      </div>
-                      <button
+                      {/* Black dim — click to dismiss */}
+                      <motion.button
                         type="button"
-                        data-cursor="hover"
+                        aria-label="Close detail"
                         onClick={() => setSelected(null)}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: reduced ? 0.12 : 0.25 }}
                         style={{
-                          margin: "0 12px 12px",
+                          position: "absolute",
+                          inset: 0,
                           border: "none",
-                          borderRadius: 999,
-                          padding: "11px 16px",
-                          background: "#0b1220",
-                          color: "#fff",
-                          fontWeight: 700,
-                          fontSize: 12,
+                          margin: 0,
+                          padding: 0,
                           cursor: "pointer",
+                          background: "rgba(0,0,0,0.72)",
+                        }}
+                      />
+
+                      {/* Centered pop card */}
+                      <motion.div
+                        initial={
+                          reduced
+                            ? { opacity: 1, scale: 1 }
+                            : { opacity: 0, scale: 0.82, y: 18 }
+                        }
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={
+                          reduced
+                            ? { opacity: 0, scale: 1 }
+                            : { opacity: 0, scale: 0.88, y: 12 }
+                        }
+                        transition={
+                          reduced
+                            ? { duration: 0.15 }
+                            : { type: "spring", stiffness: 380, damping: 26 }
+                        }
+                        style={{
+                          position: "relative",
+                          zIndex: 1,
+                          width: "100%",
+                          maxHeight: "78%",
+                          borderRadius: 18,
+                          overflow: "hidden",
+                          background: "#eaf7ff",
+                          boxShadow:
+                            "0 24px 48px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.12)",
+                          display: "flex",
+                          flexDirection: "column",
                         }}
                       >
-                        Back to list
-                      </button>
+                        <div style={{ overflow: "auto", flex: 1 }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src="/projects/medytic/appointment-details.png"
+                            alt={
+                              active
+                                ? `Detail · ${active.doctor}`
+                                : "Appointment detail"
+                            }
+                            style={{
+                              width: "100%",
+                              height: "auto",
+                              display: "block",
+                            }}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          data-cursor="hover"
+                          onClick={() => setSelected(null)}
+                          style={{
+                            margin: "0 10px 10px",
+                            border: "none",
+                            borderRadius: 999,
+                            padding: "10px 14px",
+                            background: "#0b1220",
+                            color: "#fff",
+                            fontWeight: 700,
+                            fontSize: 12,
+                            cursor: "pointer",
+                            flexShrink: 0,
+                          }}
+                        >
+                          Back to list
+                        </button>
+                      </motion.div>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -471,7 +492,7 @@ export function MedyAppointmentSystem() {
                 letterSpacing: "0.1em",
               }}
             >
-              {open ? "Sheet open · same device" : "Pick a ticket or tap a card"}
+              {open ? "Detail · centered modal" : "Pick a ticket or tap a card"}
             </p>
           </div>
         </div>
