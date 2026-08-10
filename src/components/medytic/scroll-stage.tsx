@@ -87,8 +87,9 @@ export function MedyScrollStage() {
           minHeight: "100svh",
           padding: "clamp(5rem, 9vw, 6rem) clamp(1.5rem, 4vw, 3.5rem) clamp(2rem, 4vw, 3rem)",
           display: "grid",
-          gridTemplateColumns: "minmax(0, 1.15fr) minmax(220px, 300px)",
-          gap: "clamp(2rem, 5vw, 4rem)",
+          /* Text column fixed-ish; phone column takes remaining space and centers the device */
+          gridTemplateColumns: "minmax(280px, 520px) minmax(0, 1fr)",
+          gap: "clamp(1.5rem, 3vw, 2.5rem)",
           alignItems: "center",
         }}
         className="medy-stage-grid"
@@ -217,31 +218,38 @@ export function MedyScrollStage() {
           </div>
         </div>
 
-        {/* Right: smaller, fully visible device */}
+        {/* Right: S23 Ultra — centered between text and viewport edge */}
         <div
           style={{
             width: "100%",
-            maxWidth: 300,
-            margin: "0 auto",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
             position: "relative",
           }}
         >
-          <PhoneFrame metallic cropBottom={0.14}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              key={screen.src}
-              src={screen.src}
-              alt={screen.label}
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                objectPosition: "top center",
-                display: "block",
-                animation: "medyFadeIn 0.45s var(--ease-out-expo)",
-              }}
-            />
-          </PhoneFrame>
+          <div style={{ width: "100%", maxWidth: 280 }}>
+            <PhoneFrame
+              device="s23-ultra"
+              finish="burgundy"
+              cropBottom={0.14}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                key={screen.src}
+                src={screen.src}
+                alt={screen.label}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  objectPosition: "top center",
+                  display: "block",
+                  animation: "medyFadeIn 0.45s var(--ease-out-expo)",
+                }}
+              />
+            </PhoneFrame>
+          </div>
         </div>
       </div>
     </section>

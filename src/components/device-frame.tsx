@@ -1,10 +1,15 @@
 import type { ReactNode } from "react";
 
+type PhoneDevice = "iphone" | "s23-ultra";
+type PhoneFinish = "matte" | "black-metal" | "burgundy";
+
 type PhoneFrameProps = {
   children: ReactNode;
   className?: string;
-  /** Brushed metal shell so the device reads on dark backgrounds. */
+  /** @deprecated use finish="black-metal" */
   metallic?: boolean;
+  device?: PhoneDevice;
+  finish?: PhoneFinish;
   /**
    * Crop the bottom of screen content (hides in-app bottom nav bars).
    * Value is how much extra image height to push past the clip (e.g. 0.14 = ~14%).
@@ -12,62 +17,136 @@ type PhoneFrameProps = {
   cropBottom?: number;
 };
 
+function shellStyles(finish: PhoneFinish, device: PhoneDevice) {
+  if (finish === "burgundy") {
+    return {
+      background: `
+        linear-gradient(
+          148deg,
+          #6b2438 0%,
+          #3a101c 16%,
+          #1a080e 32%,
+          #5c1e30 46%,
+          #12060a 58%,
+          #8a3450 72%,
+          #2a0c16 86%,
+          #4a1828 100%
+        )
+      `,
+      boxShadow: `
+        0 40px 80px -24px rgba(0,0,0,0.75),
+        0 0 0 1px rgba(255,190,210,0.28),
+        0 0 36px -8px rgba(180,60,90,0.45),
+        inset 0 1px 0 rgba(255,220,230,0.4),
+        inset 0 -2px 4px rgba(0,0,0,0.55)
+      `,
+      shine: `
+        linear-gradient(
+          112deg,
+          transparent 0%,
+          transparent 36%,
+          rgba(255,230,240,0.55) 44%,
+          rgba(255,200,220,0.12) 49%,
+          transparent 56%,
+          transparent 100%
+        )
+      `,
+      radius: device === "s23-ultra" ? 28 : 44,
+      screenRadius: device === "s23-ultra" ? 20 : 34,
+      aspect: device === "s23-ultra" ? "320 / 700" : "320 / 660",
+      padding: device === "s23-ultra" ? 9 : 11,
+    };
+  }
+
+  if (finish === "black-metal" || finish === "matte") {
+    const metallic = finish === "black-metal";
+    return {
+      background: metallic
+        ? `linear-gradient(
+            150deg,
+            #3a3a42 0%,
+            #1a1a1f 18%,
+            #0a0a0c 34%,
+            #2e2e36 48%,
+            #121216 62%,
+            #404048 78%,
+            #16161c 100%
+          )`
+        : "linear-gradient(160deg, #2a2a30, #0a0a0c)",
+      boxShadow: metallic
+        ? `
+          0 40px 80px -24px rgba(0,0,0,0.7),
+          0 0 0 1px rgba(255,255,255,0.22),
+          0 0 28px -6px rgba(25,135,238,0.25),
+          inset 0 1px 0 rgba(255,255,255,0.28),
+          inset 0 -1px 3px rgba(0,0,0,0.55)
+        `
+        : "0 40px 80px -30px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.06)",
+      shine: metallic
+        ? `
+          linear-gradient(
+            118deg,
+            transparent 0%,
+            transparent 42%,
+            rgba(255,255,255,0.38) 48%,
+            rgba(255,255,255,0.05) 51%,
+            transparent 58%,
+            transparent 100%
+          )
+        `
+        : null,
+      radius: device === "s23-ultra" ? 28 : 44,
+      screenRadius: device === "s23-ultra" ? 20 : 34,
+      aspect: device === "s23-ultra" ? "320 / 700" : "320 / 660",
+      padding: metallic || device === "s23-ultra" ? 10 : 10,
+    };
+  }
+
+  return shellStyles("matte", device);
+}
+
 /** Realistic phone shell. Content fills the screen area. */
 export function PhoneFrame({
   children,
   className,
   metallic = false,
+  device = "iphone",
+  finish,
   cropBottom = 0,
 }: PhoneFrameProps) {
-  const shellBg = metallic
-    ? `linear-gradient(
-        150deg,
-        #3a3a42 0%,
-        #1a1a1f 18%,
-        #0a0a0c 34%,
-        #2e2e36 48%,
-        #121216 62%,
-        #404048 78%,
-        #16161c 100%
-      )`
-    : "linear-gradient(160deg, #2a2a30, #0a0a0c)";
-
-  const shellShadow = metallic
-    ? `
-      0 40px 80px -24px rgba(0,0,0,0.7),
-      0 0 0 1px rgba(255,255,255,0.22),
-      0 0 28px -6px rgba(25,135,238,0.25),
-      inset 0 1px 0 rgba(255,255,255,0.28),
-      inset 0 -1px 3px rgba(0,0,0,0.55)
-    `
-    : "0 40px 80px -30px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.06)";
+  const resolvedFinish: PhoneFinish =
+    finish ?? (metallic ? "black-metal" : "matte");
+  const shell = shellStyles(resolvedFinish, device);
+  const isS23 = device === "s23-ultra";
+  const showShine = Boolean(shell.shine);
 
   return (
     <div
       className={className}
       style={{
         position: "relative",
-        borderRadius: 44,
-        padding: metallic ? 11 : 10,
-        background: shellBg,
-        boxShadow: shellShadow,
-        aspectRatio: "320 / 660",
+        borderRadius: shell.radius,
+        padding: shell.padding,
+        background: shell.background,
+        boxShadow: shell.boxShadow,
+        aspectRatio: shell.aspect,
         width: "100%",
       }}
     >
-      {/* Edge highlight + thin specular streak (black metal) */}
-      {metallic && (
+      {showShine && (
         <>
           <div
             aria-hidden
             style={{
               position: "absolute",
               inset: 0,
-              borderRadius: 44,
+              borderRadius: shell.radius,
               pointerEvents: "none",
               zIndex: 3,
               boxShadow:
-                "inset 0 0 0 1px rgba(255,255,255,0.14), inset 1px 0 0 rgba(255,255,255,0.08)",
+                resolvedFinish === "burgundy"
+                  ? "inset 0 0 0 1px rgba(255,210,220,0.22), inset 1px 0 0 rgba(255,200,210,0.12)"
+                  : "inset 0 0 0 1px rgba(255,255,255,0.14), inset 1px 0 0 rgba(255,255,255,0.08)",
             }}
           />
           <div
@@ -75,63 +154,89 @@ export function PhoneFrame({
             style={{
               position: "absolute",
               inset: 0,
-              borderRadius: 44,
+              borderRadius: shell.radius,
               pointerEvents: "none",
               zIndex: 3,
-              background: `
-                linear-gradient(
-                  118deg,
-                  transparent 0%,
-                  transparent 42%,
-                  rgba(255,255,255,0.38) 48%,
-                  rgba(255,255,255,0.05) 51%,
-                  transparent 58%,
-                  transparent 100%
-                )
-              `,
-              opacity: 0.7,
+              background: shell.shine!,
+              opacity: resolvedFinish === "burgundy" ? 0.9 : 0.7,
             }}
           />
+          {/* Secondary soft reflection along the left edge */}
+          {resolvedFinish === "burgundy" && (
+            <div
+              aria-hidden
+              style={{
+                position: "absolute",
+                top: "8%",
+                bottom: "8%",
+                left: 2,
+                width: 3,
+                borderRadius: 999,
+                background:
+                  "linear-gradient(180deg, transparent, rgba(255,220,230,0.55), transparent)",
+                zIndex: 3,
+                pointerEvents: "none",
+                opacity: 0.7,
+              }}
+            />
+          )}
         </>
       )}
 
-      <div
-        style={{
-          position: "absolute",
-          top: 18,
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: 92,
-          height: 22,
-          borderRadius: 999,
-          background: "#050507",
-          boxShadow: metallic
-            ? "inset 0 1px 2px rgba(0,0,0,0.8), 0 0.5px 0 rgba(255,255,255,0.15)"
-            : undefined,
-          zIndex: 4,
-        }}
-      />
+      {/* Camera: S23 punch-hole (doesn't cover header text) vs iPhone island */}
+      {isS23 ? (
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            top: 14,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: 11,
+            height: 11,
+            borderRadius: 999,
+            background: "radial-gradient(circle at 35% 35%, #2a2a30, #050507 70%)",
+            boxShadow:
+              "0 0 0 1.5px rgba(0,0,0,0.55), 0 0 0 2.5px rgba(255,200,210,0.12)",
+            zIndex: 5,
+          }}
+        />
+      ) : (
+        <div
+          style={{
+            position: "absolute",
+            top: 18,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: 92,
+            height: 22,
+            borderRadius: 999,
+            background: "#050507",
+            boxShadow:
+              resolvedFinish !== "matte"
+                ? "inset 0 1px 2px rgba(0,0,0,0.8), 0 0.5px 0 rgba(255,255,255,0.15)"
+                : undefined,
+            zIndex: 4,
+          }}
+        />
+      )}
+
       <div
         style={{
           position: "relative",
           height: "100%",
           width: "100%",
-          borderRadius: 34,
+          borderRadius: shell.screenRadius,
           overflow: "hidden",
           background: "#000",
-          boxShadow: metallic
-            ? "inset 0 0 0 1px rgba(255,255,255,0.06)"
-            : undefined,
+          boxShadow:
+            resolvedFinish !== "matte"
+              ? "inset 0 0 0 1px rgba(255,255,255,0.06)"
+              : undefined,
         }}
       >
         {cropBottom > 0 ? (
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              overflow: "hidden",
-            }}
-          >
+          <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
             <div
               style={{
                 position: "absolute",
