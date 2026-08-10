@@ -106,7 +106,7 @@ export function MedyExpandGallery() {
     };
   }, []);
 
-  // Continuous gentle drift — no stepped jumps (those felt low-fps)
+  // Continuous gentle drift — ignore user scroll unless the pointer is in the reel
   useEffect(() => {
     if (reduced) return;
     const section = sectionRef.current;
@@ -120,6 +120,18 @@ export function MedyExpandGallery() {
     );
     io.observe(section);
 
+    const track = trackRef.current;
+    const blockWheel = (e: WheelEvent) => {
+      if (pausedRef.current || expandedRef.current) return;
+      e.preventDefault();
+    };
+    const blockTouch = (e: TouchEvent) => {
+      if (pausedRef.current || expandedRef.current) return;
+      e.preventDefault();
+    };
+    track?.addEventListener("wheel", blockWheel, { passive: false });
+    track?.addEventListener("touchmove", blockTouch, { passive: false });
+
     let raf = 0;
     let last = performance.now();
 
@@ -128,8 +140,8 @@ export function MedyExpandGallery() {
       const raw = now - last;
       last = now;
       const dt = Math.min(raw, 34);
-      const track = trackRef.current;
-      if (!track) return;
+      const el = trackRef.current;
+      if (!el) return;
 
       const shouldDrift =
         inViewRef.current &&
@@ -139,18 +151,20 @@ export function MedyExpandGallery() {
 
       if (!shouldDrift) return;
 
-      const max = track.scrollWidth - track.clientWidth;
+      const max = el.scrollWidth - el.clientWidth;
       if (max <= 0) return;
 
-      let next = track.scrollLeft + (AUTO_SPEED * dt) / 1000;
+      let next = el.scrollLeft + (AUTO_SPEED * dt) / 1000;
       if (next >= max - 0.5) next = 0;
-      track.scrollLeft = next;
+      el.scrollLeft = next;
     };
 
     raf = requestAnimationFrame(tick);
     return () => {
       io.disconnect();
       cancelAnimationFrame(raf);
+      track?.removeEventListener("wheel", blockWheel);
+      track?.removeEventListener("touchmove", blockTouch);
     };
   }, [reduced]);
 
@@ -351,25 +365,26 @@ export function MedyExpandGallery() {
         </div>
       </div>
 
+      {/* Padding inside the scrollport so device shadows aren't clipped */}
       <div
         ref={trackRef}
         className="medy-reel"
         onPointerEnter={pauseDrift}
         onPointerLeave={resumeDrift}
         style={{
-          marginTop: "0.85rem",
+          marginTop: "0.35rem",
           display: "flex",
-          alignItems: "flex-end",
+          alignItems: "center",
           gap: "clamp(1rem, 2vw, 1.4rem)",
           overflowX: "auto",
-          overflowY: "visible",
-          // Snap off while drifting — snap fights continuous scroll and feels like low FPS
+          overflowY: "hidden",
           scrollSnapType: drifting ? "none" : "x mandatory",
           scrollPaddingInline: `max(1.25rem, calc((100vw - ${PHONE_W}px) / 2))`,
           paddingInline: `max(1.25rem, calc((100vw - ${PHONE_W}px) / 2))`,
-          paddingTop: 8,
-          paddingBottom: 20,
+          paddingTop: 48,
+          paddingBottom: 52,
           WebkitOverflowScrolling: "touch",
+          touchAction: drifting ? "none" : "pan-x",
         }}
       >
         {REEL.map((s, i) => {
@@ -399,7 +414,7 @@ export function MedyExpandGallery() {
                 textAlign: "left",
                 opacity: isFocus ? 1 : 0.52,
                 transform: isFocus ? "scale(1)" : "scale(0.94)",
-                transformOrigin: "center bottom",
+                transformOrigin: "center center",
                 transition: "opacity 0.45s ease, transform 0.45s ease",
                 willChange: "transform, opacity",
               }}
