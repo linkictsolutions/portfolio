@@ -5,6 +5,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -102,9 +103,9 @@ export function MedyExpandGallery() {
 
     const onWheel = (e: WheelEvent) => {
       if (expandedRef.current) return;
-      e.preventDefault();
-      // Hover (or any pointer over reel) — manual glide; cruise already easing down
+      // Only take over wheel while hovering a phone (paused)
       if (!pausedByHoverRef.current) return;
+      e.preventDefault();
       targetLeftRef.current = null;
       const delta =
         Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
@@ -182,6 +183,13 @@ export function MedyExpandGallery() {
     pausedByHoverRef.current = false;
     glideRef.current = 0;
     setPointerIn(false);
+  }
+
+  /** Only the phone shell pauses drift — not labels or bottom padding */
+  function onPhonePointerLeave(e: ReactPointerEvent) {
+    const next = e.relatedTarget as Element | null;
+    if (next?.closest?.("[data-phone-hit]")) return;
+    resumeDrift();
   }
   useEffect(() => {
     if (!expanded) return;
@@ -349,8 +357,6 @@ export function MedyExpandGallery() {
         <div
           ref={trackRef}
           className="medy-reel"
-          onPointerEnter={pauseDrift}
-          onPointerLeave={resumeDrift}
           style={{
             display: "flex",
             alignItems: "center",
@@ -390,7 +396,6 @@ export function MedyExpandGallery() {
                   padding: 0,
                   cursor: "pointer",
                   textAlign: "left",
-                  // No transform here — transform on a button clips child box-shadows
                   overflow: "visible",
                 }}
               >
@@ -403,25 +408,33 @@ export function MedyExpandGallery() {
                     transformOrigin: "center center",
                     transition: "opacity 0.45s ease, transform 0.45s ease",
                     overflow: "visible",
+                    pointerEvents: "none",
                   }}
                 >
-                  <PhoneFrame finish="black-metal" screenBg="#f3f4f6">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={s.src}
-                      alt={s.label}
-                      loading="lazy"
-                      draggable={false}
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                        objectPosition: "top center",
-                        display: "block",
-                        pointerEvents: "none",
-                      }}
-                    />
-                  </PhoneFrame>
+                  <div
+                    data-phone-hit
+                    onPointerEnter={pauseDrift}
+                    onPointerLeave={onPhonePointerLeave}
+                    style={{ pointerEvents: "auto" }}
+                  >
+                    <PhoneFrame finish="black-metal" screenBg="#f3f4f6">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={s.src}
+                        alt={s.label}
+                        loading="lazy"
+                        draggable={false}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          objectPosition: "top center",
+                          display: "block",
+                          pointerEvents: "none",
+                        }}
+                      />
+                    </PhoneFrame>
+                  </div>
                 </div>
                 <div
                   className="text-label"
@@ -429,6 +442,7 @@ export function MedyExpandGallery() {
                     marginTop: 2,
                     opacity: isFocus ? 0.7 : 0.35,
                     transition: "opacity 0.3s",
+                    pointerEvents: "none",
                   }}
                 >
                   {(i + 1).toString().padStart(2, "0")} · {s.label}
