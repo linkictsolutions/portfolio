@@ -215,7 +215,7 @@ export function MedyExpandGallery() {
     <section
       ref={sectionRef}
       style={{
-        padding: "clamp(2rem, 4.5vw, 3.5rem) 0 clamp(2.5rem, 5vw, 4rem)",
+        padding: "clamp(1.75rem, 4vw, 3rem) 0 clamp(2rem, 4.5vw, 3.5rem)",
         background: `
           radial-gradient(800px 360px at 80% 0%, rgba(25,135,238,0.08), transparent 55%),
           var(--color-paper)
@@ -277,11 +277,47 @@ export function MedyExpandGallery() {
               transition={{ duration: 0.25 }}
             >
               <div
-                className="text-label"
-                style={{ opacity: 0.45, marginBottom: 6 }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  marginBottom: 8,
+                  flexWrap: "wrap",
+                }}
               >
-                {(focus + 1).toString().padStart(2, "0")} /{" "}
-                {REEL.length.toString().padStart(2, "0")}
+                <div className="text-label" style={{ opacity: 0.45, margin: 0 }}>
+                  {(focus + 1).toString().padStart(2, "0")} /{" "}
+                  {REEL.length.toString().padStart(2, "0")}
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 5,
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                  }}
+                  aria-hidden
+                >
+                  {REEL.map((s, i) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => scrollToIndex(i)}
+                      aria-label={`Go to ${s.label}`}
+                      style={{
+                        width: i === focus ? 16 : 6,
+                        height: 6,
+                        borderRadius: 999,
+                        border: "none",
+                        padding: 0,
+                        cursor: "pointer",
+                        background:
+                          i === focus ? medyAccent : "rgba(11,11,13,0.2)",
+                        transition: "width 0.3s, background 0.3s",
+                      }}
+                    />
+                  ))}
+                </div>
               </div>
               <h3
                 className="text-display"
@@ -307,62 +343,9 @@ export function MedyExpandGallery() {
             </motion.div>
           </AnimatePresence>
         </div>
-
-        <div
-          style={{
-            marginTop: "1rem",
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-          }}
-        >
-          <RailButton
-            label="Previous screen"
-            onClick={() => scrollToIndex(focus - 1)}
-            disabled={focus === 0}
-          >
-            ←
-          </RailButton>
-          <RailButton
-            label="Next screen"
-            onClick={() => scrollToIndex(focus + 1)}
-            disabled={focus === REEL.length - 1}
-          >
-            →
-          </RailButton>
-
-          <div
-            style={{
-              marginLeft: "auto",
-              display: "flex",
-              gap: 6,
-              flexWrap: "wrap",
-              justifyContent: "flex-end",
-            }}
-            aria-hidden
-          >
-            {REEL.map((s, i) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => scrollToIndex(i)}
-                style={{
-                  width: i === focus ? 18 : 7,
-                  height: 7,
-                  borderRadius: 999,
-                  border: "none",
-                  padding: 0,
-                  cursor: "pointer",
-                  background: i === focus ? medyAccent : "rgba(11,11,13,0.2)",
-                  transition: "width 0.3s, background 0.3s",
-                }}
-              />
-            ))}
-          </div>
-        </div>
       </div>
 
-      <div style={{ position: "relative" }}>
+      <div style={{ position: "relative", marginTop: "0.15rem" }}>
         <div
           ref={trackRef}
           className="medy-reel"
