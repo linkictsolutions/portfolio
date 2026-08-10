@@ -199,7 +199,7 @@ export function MedyScrollStage() {
         minHeight: "100svh",
         background: "#07080c",
         color: "#f3efe6",
-        overflow: "hidden",
+        overflow: "visible",
       }}
     >
       <div
@@ -464,6 +464,10 @@ export function MedyScrollStage() {
             alignItems: "center",
             position: "relative",
             minHeight: "min(72svh, 680px)",
+            overflow: "visible",
+            // Room for the phone to enter/exit vertically without clipping
+            paddingBlock: "clamp(2.5rem, 6vh, 4.5rem)",
+            marginBlock: "clamp(-2.5rem, -6vh, -4.5rem)",
           }}
         >
           <div
@@ -473,7 +477,7 @@ export function MedyScrollStage() {
               width: "100%",
               maxWidth: 360,
               aspectRatio: "9 / 17.5",
-              overflow: "hidden",
+              overflow: "visible",
             }}
           >
             <AnimatePresence mode="sync" initial={false} custom={dir}>
@@ -481,11 +485,11 @@ export function MedyScrollStage() {
                 key={screen.id}
                 custom={dir}
                 initial={
-                  reduced ? { opacity: 0 } : { opacity: 0, y: dir * 110 }
+                  reduced ? { opacity: 0 } : { opacity: 0, y: `${dir * 28}%` }
                 }
                 animate={{ opacity: 1, y: 0 }}
                 exit={
-                  reduced ? { opacity: 0 } : { opacity: 0, y: dir * -110 }
+                  reduced ? { opacity: 0 } : { opacity: 0, y: `${dir * -28}%` }
                 }
                 transition={{
                   duration: 0.55,
