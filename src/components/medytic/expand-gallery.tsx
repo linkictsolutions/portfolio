@@ -15,7 +15,7 @@ import { medyAccent, medyScreens, type MedyScreen } from "@/content/medytic";
 const REEL = medyScreens.filter((s) => s.fit !== "panel");
 const PHONE_W = 275;
 /** Cruise speed while auto-drifting (px / second) */
-const AUTO_SPEED = 36;
+const AUTO_SPEED = 48;
 /** How quickly speed eases toward target (higher = snappier) */
 const SPEED_SMOOTH = 3.2;
 /** Wheel / drag glide friction per second */
@@ -41,6 +41,7 @@ export function MedyExpandGallery() {
 
   const [focus, setFocus] = useState(0);
   const [expanded, setExpanded] = useState<MedyScreen | null>(null);
+  const [expandDir, setExpandDir] = useState<1 | -1>(1);
   const [pointerIn, setPointerIn] = useState(false);
 
   focusRef.current = focus;
@@ -218,6 +219,7 @@ export function MedyExpandGallery() {
     const i = REEL.findIndex((s) => s.id === expanded.id);
     const next = i + dir;
     if (next < 0 || next >= REEL.length) return;
+    setExpandDir(dir);
     setExpanded(REEL[next]!);
   }
 
@@ -546,24 +548,67 @@ export function MedyExpandGallery() {
               }}
             >
               <div style={{ position: "relative" }}>
-                <PhoneFrame finish="black-metal" screenBg="#f3f4f6">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div
                     key={expanded.id}
-                    src={expanded.src}
-                    alt={expanded.label}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      objectPosition: "top center",
-                      display: "block",
+                    initial={
+                      reduced
+                        ? { opacity: 0 }
+                        : {
+                            opacity: 0,
+                            scale: 0.96,
+                            y: expandDir * 12,
+                          }
+                    }
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={
+                      reduced
+                        ? { opacity: 0 }
+                        : {
+                            opacity: 0,
+                            scale: 0.98,
+                            y: expandDir * -10,
+                          }
+                    }
+                    transition={{
+                      duration: 0.34,
+                      ease: [0.22, 1, 0.36, 1],
                     }}
-                  />
-                </PhoneFrame>
+                  >
+                    <PhoneFrame finish="black-metal" screenBg="#f3f4f6">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={expanded.src}
+                        alt={expanded.label}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          objectPosition: "top center",
+                          display: "block",
+                        }}
+                      />
+                    </PhoneFrame>
+                  </motion.div>
+                </AnimatePresence>
               </div>
 
-              <div>
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={`${expanded.id}-copy`}
+                  initial={
+                    reduced
+                      ? { opacity: 0 }
+                      : { opacity: 0, y: expandDir * 8 }
+                  }
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={
+                    reduced
+                      ? { opacity: 0 }
+                      : { opacity: 0, y: expandDir * -6 }
+                  }
+                  transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                >
                   <p className="text-label" style={{ color: medyAccent }}>
                     Decision
                   </p>
@@ -631,7 +676,8 @@ export function MedyExpandGallery() {
                       ×
                     </button>
                   </div>
-              </div>
+                </motion.div>
+              </AnimatePresence>
             </div>
           </motion.div>
         )}
