@@ -212,12 +212,8 @@ video {
     transform: none !important;
   }
 
-  .medy-stage-device {
-    grid-template-columns: minmax(0, 1fr) 44px !important;
-  }
-
   .medy-stage-rail {
-    height: min(55svh, 420px) !important;
+    height: min(48svh, 380px) !important;
   }
 }
 
