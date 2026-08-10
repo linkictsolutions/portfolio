@@ -385,13 +385,13 @@ export function MedyScrollStage() {
               <motion.div
                 key={screen.id}
                 initial={
-                  reduced ? { opacity: 0 } : { opacity: 0, y: dir * 14 }
+                  reduced ? { opacity: 0 } : { opacity: 0, y: dir * 10 }
                 }
                 animate={{ opacity: 1, y: 0 }}
                 exit={
-                  reduced ? { opacity: 0 } : { opacity: 0, y: dir * -10 }
+                  reduced ? { opacity: 0 } : { opacity: 0, y: dir * -8 }
                 }
-                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
                 style={{ display: "grid", gap: "0.35rem" }}
               >
                 <div
@@ -480,25 +480,32 @@ export function MedyScrollStage() {
               overflow: "visible",
             }}
           >
-            <AnimatePresence mode="sync" initial={false} custom={dir}>
+            <AnimatePresence mode="wait" initial={false} custom={dir}>
               <motion.div
                 key={screen.id}
                 custom={dir}
                 initial={
-                  reduced ? { opacity: 0 } : { opacity: 0, y: `${dir * 28}%` }
+                  reduced
+                    ? { opacity: 0 }
+                    : { opacity: 0, y: dir * 36, filter: "blur(6px)" }
                 }
-                animate={{ opacity: 1, y: 0 }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                 exit={
-                  reduced ? { opacity: 0 } : { opacity: 0, y: `${dir * -28}%` }
+                  reduced
+                    ? { opacity: 0 }
+                    : { opacity: 0, y: dir * -28, filter: "blur(4px)" }
                 }
                 transition={{
-                  duration: 0.55,
-                  ease: [0.22, 1, 0.36, 1],
+                  duration: 0.7,
+                  ease: [0.16, 1, 0.3, 1],
+                  opacity: { duration: 0.45, ease: "easeOut" },
+                  filter: { duration: 0.5 },
                 }}
                 style={{
                   position: "absolute",
                   inset: 0,
                   width: "100%",
+                  willChange: "transform, opacity, filter",
                 }}
               >
                 <PhoneFrame
