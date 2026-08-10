@@ -351,8 +351,8 @@ export function MedyExpandGallery() {
         <div
           ref={trackRef}
           className="medy-reel"
-          onPointerEnter={pauseDrift}
-          onPointerLeave={resumeDrift}
+          onPointerEnter={() => setPointerIn(true)}
+          onPointerLeave={() => setPointerIn(false)}
           style={{
             display: "flex",
             alignItems: "center",
@@ -365,7 +365,7 @@ export function MedyExpandGallery() {
             paddingTop: 64,
             paddingBottom: 80,
             WebkitOverflowScrolling: "touch",
-            touchAction: pointerIn ? "pan-x" : "none",
+            touchAction: "pan-x",
           }}
         >
           {REEL.map((s, i) => {
@@ -379,8 +379,8 @@ export function MedyExpandGallery() {
                 data-cursor-label="Expand"
                 aria-label={`Expand ${s.label}`}
                 onClick={() => {
-                  pauseDrift();
                   setFocus(i);
+                  setExpandDir(1);
                   setExpanded(s);
                 }}
                 style={{
