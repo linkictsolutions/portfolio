@@ -194,7 +194,8 @@ export function PhoneFrame({
                   : "inset 0 0 0 1px rgba(255,255,255,0.18), inset 1px 0 0 rgba(255,255,255,0.1)",
             }}
           />
-          {resolvedFinish === "burgundy" && (
+          {(resolvedFinish === "burgundy" ||
+            resolvedFinish === "black-metal") && (
             <div
               aria-hidden
               style={{
@@ -205,10 +206,12 @@ export function PhoneFrame({
                 width: Math.max(2, shell.padding - 2),
                 borderRadius: 999,
                 background:
-                  "linear-gradient(180deg, transparent, rgba(255,220,230,0.65), transparent)",
+                  resolvedFinish === "burgundy"
+                    ? "linear-gradient(180deg, transparent, rgba(255,220,230,0.65), transparent)"
+                    : "linear-gradient(180deg, transparent, rgba(255,255,255,0.55), transparent)",
                 zIndex: 3,
                 pointerEvents: "none",
-                opacity: 0.85,
+                opacity: resolvedFinish === "burgundy" ? 0.85 : 0.7,
               }}
             />
           )}

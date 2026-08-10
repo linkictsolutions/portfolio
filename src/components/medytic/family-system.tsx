@@ -37,14 +37,47 @@ export function MedyFamilySystem() {
       <div
         className="medy-split"
         style={{
-          maxWidth: 1100,
+          maxWidth: 1200,
           margin: "0 auto",
           display: "grid",
-          gridTemplateColumns: "minmax(0, 1.15fr) minmax(220px, 280px)",
-          gap: "clamp(1.25rem, 3vw, 2.5rem)",
-          alignItems: "start",
+          // Phone band | text — phone centers in the left band
+          gridTemplateColumns: "minmax(260px, 1fr) minmax(0, 1.05fr)",
+          gap: "clamp(1.25rem, 3vw, 2.75rem)",
+          alignItems: "center",
         }}
       >
+        <div
+          style={{
+            width: "100%",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <div style={{ width: "100%", maxWidth: 300 }}>
+            <PhoneFrame finish="black-metal">
+              <AnimatePresence mode="wait">
+                <motion.img
+                  key={active.src}
+                  src={active.src}
+                  alt={active.label}
+                  initial={reduced ? false : { opacity: 0, scale: 1.03 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={reduced ? undefined : { opacity: 0, scale: 0.98 }}
+                  transition={{ duration: 0.4 }}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    objectPosition: "top center",
+                    display: "block",
+                  }}
+                />
+              </AnimatePresence>
+            </PhoneFrame>
+          </div>
+        </div>
+
         <div>
           <p className="text-label" style={{ color: medyAccent, margin: 0 }}>
             (Interactive · Overview)
@@ -158,27 +191,6 @@ export function MedyFamilySystem() {
               </li>
             ))}
           </ul>
-        </div>
-
-        <div style={{ width: "100%", maxWidth: 280, margin: "0 auto" }}>
-          <PhoneFrame device="galaxy-s23" finish="burgundy" screenBg="#f3f4f6">
-            <AnimatePresence mode="wait">
-              <motion.img
-                key={active.src}
-                src={active.src}
-                alt={active.label}
-                initial={reduced ? false : { opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={reduced ? undefined : { opacity: 0 }}
-                transition={{ duration: 0.35 }}
-                style={{
-                  width: "100%",
-                  height: "auto",
-                  display: "block",
-                }}
-              />
-            </AnimatePresence>
-          </PhoneFrame>
         </div>
       </div>
     </section>
