@@ -119,7 +119,7 @@ export function MedyScrollStage() {
                 marginTop: "1.25rem",
                 fontSize: "clamp(1.15rem, 2vw, 1.55rem)",
                 lineHeight: 1.35,
-                maxWidth: 34ch,
+                maxWidth: "34ch",
                 opacity: 0.9,
               }}
             >
@@ -130,7 +130,7 @@ export function MedyScrollStage() {
                 marginTop: "1.1rem",
                 fontSize: "clamp(0.98rem, 1.3vw, 1.1rem)",
                 lineHeight: 1.55,
-                maxWidth: 42ch,
+                maxWidth: "42ch",
                 opacity: 0.58,
               }}
             >
@@ -179,7 +179,7 @@ export function MedyScrollStage() {
                   opacity: 0.68,
                   fontSize: "clamp(1rem, 1.4vw, 1.15rem)",
                   lineHeight: 1.45,
-                  maxWidth: 40ch,
+                  maxWidth: "40ch",
                 }}
               >
                 {screen.caption}
