@@ -1,24 +1,36 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { PhoneFrame } from "@/components/device-frame";
 import { medyAccent, medyBrief, medyStageScreens } from "@/content/medytic";
 
-/** Pinned scroll stage: real screens morph as you scroll. Type supports — never covers UI. */
+const AUTO_MS = 3200;
+
+/** Pinned scroll stage: scrub explores; idle auto-advances with screen motion. */
 export function MedyScrollStage() {
   const sectionRef = useRef<HTMLElement>(null);
+  const modeRef = useRef<"scroll" | "auto">("auto");
+  const indexRef = useRef(0);
   const [index, setIndex] = useState(0);
   const [pinned, setPinned] = useState(false);
+  const [dir, setDir] = useState<1 | -1>(1);
+  const reduced = useReducedMotion();
   const screens = medyStageScreens;
 
+  indexRef.current = index;
+
   useEffect(() => {
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const section = sectionRef.current;
     if (!section || reduced) return;
 
     gsap.registerPlugin(ScrollTrigger);
+
+    const bumpScroll = () => {
+      modeRef.current = "scroll";
+    };
 
     const ctx = gsap.context(() => {
       ScrollTrigger.create({
@@ -27,31 +39,70 @@ export function MedyScrollStage() {
         end: () => `+=${screens.length * 70}%`,
         pin: true,
         scrub: 0.65,
-        onEnter: () => setPinned(true),
-        onEnterBack: () => setPinned(true),
-        onLeave: () => setPinned(false),
-        onLeaveBack: () => setPinned(false),
+        onToggle: (self) => setPinned(self.isActive),
         onUpdate: (self) => {
+          if (modeRef.current !== "scroll") return;
           const i = Math.min(
             screens.length - 1,
             Math.floor(self.progress * screens.length),
           );
-          setIndex(i);
+          setIndex((prev) => {
+            if (i !== prev) setDir(i > prev ? 1 : -1);
+            return i;
+          });
         },
       });
     }, section);
 
+    window.addEventListener("wheel", bumpScroll, { passive: true });
+    window.addEventListener("touchmove", bumpScroll, { passive: true });
     const onScroll = () => ScrollTrigger.update();
     window.addEventListener("lenis-scroll", onScroll);
     ScrollTrigger.refresh();
 
     return () => {
+      window.removeEventListener("wheel", bumpScroll);
+      window.removeEventListener("touchmove", bumpScroll);
       window.removeEventListener("lenis-scroll", onScroll);
       ctx.revert();
     };
-  }, [screens.length]);
+  }, [screens.length, reduced]);
 
-  const screen = screens[index];
+  // After idle, auto-advance screens while pinned
+  useEffect(() => {
+    if (!pinned || reduced) return;
+
+    const armAuto = () => {
+      modeRef.current = "auto";
+    };
+    const onInteract = () => {
+      modeRef.current = "scroll";
+      window.clearTimeout(idle);
+      idle = window.setTimeout(armAuto, AUTO_MS);
+    };
+
+    let idle = window.setTimeout(armAuto, AUTO_MS);
+    window.addEventListener("wheel", onInteract, { passive: true });
+    window.addEventListener("touchmove", onInteract, { passive: true });
+
+    const tick = window.setInterval(() => {
+      if (modeRef.current !== "auto") return;
+      setIndex((prev) => {
+        const next = prev >= screens.length - 1 ? 0 : prev + 1;
+        setDir(next >= prev || (prev === screens.length - 1 && next === 0) ? 1 : -1);
+        return next;
+      });
+    }, AUTO_MS);
+
+    return () => {
+      window.clearTimeout(idle);
+      window.clearInterval(tick);
+      window.removeEventListener("wheel", onInteract);
+      window.removeEventListener("touchmove", onInteract);
+    };
+  }, [pinned, reduced, screens.length]);
+
+  const screen = screens[index]!;
 
   return (
     <section
@@ -78,6 +129,40 @@ export function MedyScrollStage() {
         }}
       />
 
+      {/* Center cue */}
+      <div
+        className="medy-stage-cue"
+        aria-hidden
+        style={{
+          position: "absolute",
+          left: "50%",
+          top: "50%",
+          transform: "translate(-50%, -50%)",
+          zIndex: 2,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 10,
+          pointerEvents: "none",
+          opacity: pinned ? 0.55 : 0.35,
+          transition: "opacity 0.4s",
+        }}
+      >
+        <span
+          className="text-label"
+          style={{
+            writingMode: "vertical-rl",
+            letterSpacing: "0.22em",
+            color: "rgba(243,239,230,0.75)",
+          }}
+        >
+          Scroll down to see more
+        </span>
+        <span className="medy-stage-arrow" style={{ color: medyAccent, fontSize: 18 }}>
+          ↓
+        </span>
+      </div>
+
       <div
         style={{
           position: "relative",
@@ -85,16 +170,15 @@ export function MedyScrollStage() {
           maxWidth: 1400,
           margin: "0 auto",
           minHeight: "100svh",
-          padding: "clamp(5rem, 9vw, 6rem) clamp(1.5rem, 4vw, 3.5rem) clamp(2rem, 4vw, 3rem)",
+          padding:
+            "clamp(5rem, 9vw, 6rem) clamp(1.5rem, 4vw, 3.5rem) clamp(2rem, 4vw, 3rem)",
           display: "grid",
-          /* Text column fixed-ish; phone column takes remaining space and centers the device */
           gridTemplateColumns: "minmax(280px, 520px) minmax(0, 1fr)",
           gap: "clamp(1.5rem, 3vw, 2.5rem)",
           alignItems: "center",
         }}
         className="medy-stage-grid"
       >
-        {/* Left: type fills the space — phone stays proportional */}
         <div
           style={{
             display: "flex",
@@ -105,12 +189,19 @@ export function MedyScrollStage() {
           }}
         >
           <div>
-            <p className="text-label" style={{ color: medyAccent, marginBottom: "1rem" }}>
+            <p
+              className="text-label"
+              style={{ color: medyAccent, marginBottom: "1rem" }}
+            >
               {medyBrief.tags.join(" · ")} · {medyBrief.year}
             </p>
             <h1
               className="text-display"
-              style={{ fontSize: "clamp(3.25rem, 9vw, 7rem)", margin: 0, lineHeight: 0.9 }}
+              style={{
+                fontSize: "clamp(3.25rem, 9vw, 7rem)",
+                margin: 0,
+                lineHeight: 0.9,
+              }}
             >
               {medyBrief.title}
               <span style={{ color: medyAccent }}>.</span>
@@ -152,57 +243,76 @@ export function MedyScrollStage() {
             >
               {(index + 1).toString().padStart(2, "0")} /{" "}
               {screens.length.toString().padStart(2, "0")}
-              {pinned ? "  ·  scroll to explore" : ""}
+              {pinned ? "  ·  scroll or wait" : ""}
             </div>
+
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={screen.id}
+                initial={
+                  reduced
+                    ? { opacity: 0 }
+                    : { opacity: 0, y: dir * 14 }
+                }
+                animate={{ opacity: 1, y: 0 }}
+                exit={
+                  reduced
+                    ? { opacity: 0 }
+                    : { opacity: 0, y: dir * -10 }
+                }
+                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                style={{ display: "grid", gap: "0.35rem" }}
+              >
+                <div
+                  className="text-display"
+                  style={{
+                    fontSize: "clamp(1.75rem, 3.5vw, 2.75rem)",
+                    lineHeight: 1.05,
+                    borderLeft: `3px solid ${medyAccent}`,
+                    paddingLeft: 16,
+                  }}
+                >
+                  {screen.label}
+                </div>
+                <p
+                  style={{
+                    margin: 0,
+                    paddingLeft: 19,
+                    opacity: 0.68,
+                    fontSize: "clamp(1rem, 1.4vw, 1.15rem)",
+                    lineHeight: 1.45,
+                    maxWidth: "40ch",
+                  }}
+                >
+                  {screen.caption}
+                </p>
+              </motion.div>
+            </AnimatePresence>
 
             <div
-              key={screen.id}
-              style={{
-                display: "grid",
-                gap: "0.35rem",
-              }}
+              style={{ display: "flex", gap: 7, marginTop: 22, flexWrap: "wrap" }}
             >
-              <div
-                className="text-display"
-                style={{
-                  fontSize: "clamp(1.75rem, 3.5vw, 2.75rem)",
-                  lineHeight: 1.05,
-                  borderLeft: `3px solid ${medyAccent}`,
-                  paddingLeft: 16,
-                }}
-              >
-                {screen.label}
-              </div>
-              <p
-                style={{
-                  margin: 0,
-                  paddingLeft: 19,
-                  opacity: 0.68,
-                  fontSize: "clamp(1rem, 1.4vw, 1.15rem)",
-                  lineHeight: 1.45,
-                  maxWidth: "40ch",
-                }}
-              >
-                {screen.caption}
-              </p>
-            </div>
-
-            <div style={{ display: "flex", gap: 7, marginTop: 22, flexWrap: "wrap" }}>
               {screens.map((s, i) => (
                 <button
                   key={s.id}
                   type="button"
                   aria-label={`Show ${s.label}`}
                   data-cursor="hover"
-                  onClick={() => setIndex(i)}
+                  onClick={() => {
+                    modeRef.current = "scroll";
+                    setDir(i >= indexRef.current ? 1 : -1);
+                    setIndex(i);
+                  }}
                   style={{
                     height: 4,
                     width: i === index ? 36 : 14,
                     borderRadius: 999,
                     padding: 0,
                     border: "none",
-                    background: i === index ? medyAccent : "rgba(243,239,230,0.2)",
-                    transition: "width 0.35s var(--ease-out-expo), background 0.35s",
+                    background:
+                      i === index ? medyAccent : "rgba(243,239,230,0.2)",
+                    transition:
+                      "width 0.35s var(--ease-out-expo), background 0.35s",
                     cursor: "pointer",
                   }}
                 />
@@ -218,7 +328,6 @@ export function MedyScrollStage() {
           </div>
         </div>
 
-        {/* Right: S23 Ultra — centered between text and viewport edge */}
         <div
           style={{
             width: "100%",
@@ -234,22 +343,48 @@ export function MedyScrollStage() {
               finish="burgundy"
               screenBg="#f3f4f6"
             >
-              {/*
-                Width-locked, natural height: short exports (Add Device) keep
-                aspect + status bar; tall scroll captures clip at the bottom.
-              */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                key={screen.src}
-                src={screen.src}
-                alt={screen.label}
+              <div
                 style={{
+                  position: "relative",
                   width: "100%",
-                  height: "auto",
-                  display: "block",
-                  animation: "medyFadeIn 0.45s var(--ease-out-expo)",
+                  height: "100%",
+                  overflow: "hidden",
+                  background: "#f3f4f6",
                 }}
-              />
+              >
+                <AnimatePresence mode="wait" initial={false} custom={dir}>
+                  <motion.img
+                    key={screen.src}
+                    src={screen.src}
+                    alt={screen.label}
+                    custom={dir}
+                    initial={
+                      reduced
+                        ? { opacity: 0 }
+                        : { opacity: 0, x: dir * 48, scale: 1.02 }
+                    }
+                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                    exit={
+                      reduced
+                        ? { opacity: 0 }
+                        : { opacity: 0, x: dir * -36, scale: 0.99 }
+                    }
+                    transition={{
+                      duration: 0.42,
+                      ease: [0.22, 1, 0.36, 1],
+                    }}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      objectPosition: "top center",
+                      display: "block",
+                      position: "absolute",
+                      inset: 0,
+                    }}
+                  />
+                </AnimatePresence>
+              </div>
             </PhoneFrame>
           </div>
         </div>

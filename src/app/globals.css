@@ -182,6 +182,33 @@ video {
   display: none;
 }
 
+@keyframes medyArrowBounce {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translateY(8px);
+    opacity: 1;
+  }
+}
+
+.medy-stage-arrow {
+  display: inline-block;
+  animation: medyArrowBounce 1.5s var(--ease-out-expo) infinite;
+}
+
+@media (max-width: 900px) {
+  .medy-stage-cue {
+    left: auto !important;
+    right: 1rem !important;
+    top: auto !important;
+    bottom: 1.25rem !important;
+    transform: none !important;
+  }
+}
+
 /* Case-study process track */
 .process-section {
   padding: clamp(3rem, 8vw, 6rem) clamp(1.5rem, 5vw, 4rem);
