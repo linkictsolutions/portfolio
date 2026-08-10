@@ -438,11 +438,35 @@ export function MedyAppointmentSystem() {
                           background: "#eaf7ff",
                           boxShadow:
                             "0 24px 48px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.12)",
-                          display: "flex",
-                          flexDirection: "column",
                         }}
                       >
-                        <div style={{ overflow: "auto", flex: 1 }}>
+                        <button
+                          type="button"
+                          aria-label="Close"
+                          data-cursor="hover"
+                          onClick={() => setSelected(null)}
+                          style={{
+                            position: "absolute",
+                            top: 8,
+                            right: 8,
+                            zIndex: 2,
+                            width: 28,
+                            height: 28,
+                            borderRadius: 999,
+                            border: "none",
+                            display: "grid",
+                            placeItems: "center",
+                            background: "rgba(11,18,32,0.72)",
+                            color: "#fff",
+                            fontSize: 16,
+                            lineHeight: 1,
+                            cursor: "pointer",
+                            backdropFilter: "blur(6px)",
+                          }}
+                        >
+                          ×
+                        </button>
+                        <div style={{ overflow: "auto", maxHeight: "78%" }}>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src="/projects/medytic/appointment-details.png"
@@ -458,25 +482,6 @@ export function MedyAppointmentSystem() {
                             }}
                           />
                         </div>
-                        <button
-                          type="button"
-                          data-cursor="hover"
-                          onClick={() => setSelected(null)}
-                          style={{
-                            margin: "0 10px 10px",
-                            border: "none",
-                            borderRadius: 999,
-                            padding: "10px 14px",
-                            background: "#0b1220",
-                            color: "#fff",
-                            fontWeight: 700,
-                            fontSize: 12,
-                            cursor: "pointer",
-                            flexShrink: 0,
-                          }}
-                        >
-                          Back to list
-                        </button>
                       </motion.div>
                     </motion.div>
                   )}
