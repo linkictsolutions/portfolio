@@ -39,11 +39,23 @@ export function MedyExpandGallery() {
   const speedRef = useRef(0);
   const glideRef = useRef(0);
   const targetLeftRef = useRef<number | null>(null);
+  const didDragRef = useRef(false);
+  const dragRef = useRef({
+    active: false,
+    pointerId: -1,
+    startX: 0,
+    startScroll: 0,
+    dragged: false,
+    lastX: 0,
+    lastT: 0,
+    velocity: 0,
+  });
 
   const [focus, setFocus] = useState(0);
   const [expanded, setExpanded] = useState<MedyScreen | null>(null);
   const [expandDir, setExpandDir] = useState<1 | -1>(1);
   const [pointerIn, setPointerIn] = useState(false);
+  const [dragging, setDragging] = useState(false);
 
   focusRef.current = focus;
   expandedRef.current = expanded !== null;
@@ -102,10 +114,10 @@ export function MedyExpandGallery() {
     io.observe(section);
 
     const onWheel = (e: WheelEvent) => {
-      if (expandedRef.current) return;
-      // Only take over wheel while hovering a phone (paused)
-      if (!pausedByHoverRef.current) return;
+      if (expandedRef.current || !pausedByHoverRef.current) return;
+      if (!section.contains(e.target as Node)) return;
       e.preventDefault();
+      e.stopPropagation();
       targetLeftRef.current = null;
       const delta =
         Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
@@ -113,7 +125,7 @@ export function MedyExpandGallery() {
       glideRef.current = Math.max(-2400, Math.min(2400, glideRef.current));
     };
 
-    track.addEventListener("wheel", onWheel, { passive: false });
+    section.addEventListener("wheel", onWheel, { passive: false, capture: true });
 
     let raf = 0;
     let last = performance.now();
@@ -170,7 +182,7 @@ export function MedyExpandGallery() {
     return () => {
       io.disconnect();
       cancelAnimationFrame(raf);
-      track.removeEventListener("wheel", onWheel);
+      section.removeEventListener("wheel", onWheel, { capture: true });
     };
   }, [reduced, syncFocus]);
 
@@ -189,7 +201,81 @@ export function MedyExpandGallery() {
   function onPhonePointerLeave(e: ReactPointerEvent) {
     const next = e.relatedTarget as Element | null;
     if (next?.closest?.("[data-phone-hit]")) return;
+    if (dragRef.current.active) return;
     resumeDrift();
+  }
+
+  function onTrackPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
+    if (expandedRef.current || e.button !== 0) return;
+    const track = trackRef.current;
+    if (!track) return;
+
+    pauseDrift();
+    dragRef.current = {
+      active: true,
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startScroll: track.scrollLeft,
+      dragged: false,
+      lastX: e.clientX,
+      lastT: performance.now(),
+      velocity: 0,
+    };
+    track.setPointerCapture(e.pointerId);
+  }
+
+  function onTrackPointerMove(e: ReactPointerEvent<HTMLDivElement>) {
+    const d = dragRef.current;
+    if (!d.active || e.pointerId !== d.pointerId) return;
+    const track = trackRef.current;
+    if (!track) return;
+
+    const dx = e.clientX - d.startX;
+    if (!d.dragged && Math.abs(dx) < 6) return;
+
+    if (!d.dragged) {
+      d.dragged = true;
+      setDragging(true);
+    }
+
+    e.preventDefault();
+    targetLeftRef.current = null;
+    glideRef.current = 0;
+
+    const max = track.scrollWidth - track.clientWidth;
+    track.scrollLeft = Math.max(0, Math.min(max, d.startScroll - dx));
+    syncFocus(track);
+
+    const now = performance.now();
+    const dt = Math.max(now - d.lastT, 1);
+    const velocity = ((e.clientX - d.lastX) / dt) * 1000;
+    dragRef.current = {
+      ...d,
+      dragged: true,
+      lastX: e.clientX,
+      lastT: now,
+      velocity,
+    };
+  }
+
+  function onTrackPointerUp(e: ReactPointerEvent<HTMLDivElement>) {
+    const d = dragRef.current;
+    if (!d.active || e.pointerId !== d.pointerId) return;
+
+    trackRef.current?.releasePointerCapture(e.pointerId);
+    const velocity = d.velocity;
+    dragRef.current.active = false;
+    setDragging(false);
+
+    if (d.dragged) {
+      if (Math.abs(velocity) > 40) {
+        glideRef.current = Math.max(-1800, Math.min(1800, -velocity * 0.35));
+      }
+      didDragRef.current = true;
+      window.setTimeout(() => {
+        didDragRef.current = false;
+      }, 0);
+    }
   }
   useEffect(() => {
     if (!expanded) return;
@@ -272,7 +358,7 @@ export function MedyExpandGallery() {
                 lineHeight: 1.4,
               }}
             >
-              Auto-drifts when you arrive — hover pauses it so you can explore. Click a phone to expand.
+              Auto-drifts when you arrive — hover to pause, then drag sideways. Click a phone to expand.
             </p>
           </div>
 
@@ -357,6 +443,10 @@ export function MedyExpandGallery() {
         <div
           ref={trackRef}
           className="medy-reel"
+          onPointerDown={onTrackPointerDown}
+          onPointerMove={onTrackPointerMove}
+          onPointerUp={onTrackPointerUp}
+          onPointerCancel={onTrackPointerUp}
           style={{
             display: "flex",
             alignItems: "center",
@@ -370,6 +460,7 @@ export function MedyExpandGallery() {
             paddingBottom: 80,
             WebkitOverflowScrolling: "touch",
             touchAction: pointerIn ? "pan-x" : "none",
+            cursor: pointerIn ? (dragging ? "grabbing" : "grab") : "default",
           }}
         >
           {REEL.map((s, i) => {
@@ -379,10 +470,11 @@ export function MedyExpandGallery() {
                 key={s.id}
                 type="button"
                 data-reel-index={i}
-                data-cursor="view"
-                data-cursor-label="Expand"
+                data-cursor={pointerIn ? "drag" : "view"}
+                data-cursor-label={pointerIn ? "Drag" : "Expand"}
                 aria-label={`Expand ${s.label}`}
                 onClick={() => {
+                  if (didDragRef.current) return;
                   pauseDrift();
                   setFocus(i);
                   setExpandDir(1);
@@ -394,7 +486,7 @@ export function MedyExpandGallery() {
                   border: "none",
                   background: "transparent",
                   padding: 0,
-                  cursor: "pointer",
+                  cursor: pointerIn ? (dragging ? "grabbing" : "grab") : "pointer",
                   textAlign: "left",
                   overflow: "visible",
                 }}
@@ -478,7 +570,7 @@ export function MedyExpandGallery() {
                 zIndex: 2,
               }}
             >
-              ← Scroll or drag to explore →
+              ← Drag sideways to explore →
             </motion.p>
           )}
         </AnimatePresence>
