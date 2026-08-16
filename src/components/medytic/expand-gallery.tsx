@@ -15,11 +15,12 @@ import { medyAccent, medyScreens, type MedyScreen } from "@/content/medytic";
 /** Phone screens only — appointment detail is a modal panel, shown in Appointments. */
 const REEL = medyScreens.filter((s) => s.fit !== "panel");
 const PHONE_W = 275;
-const AUTO_SPEED = 52;
-/** User wheel / flick friction per second */
-const GLIDE_FRICTION = 2.1;
-const WHEEL_GAIN = 0.42;
-const MAX_USER_VELOCITY = 720;
+const AUTO_SPEED = 48;
+/** User wheel / flick friction per second — lower = longer, gentler glide */
+const GLIDE_FRICTION = 1.45;
+const WHEEL_GAIN = 0.28;
+const MAX_USER_VELOCITY = 520;
+const RESUME_DELAY_MS = 320;
 
 /**
  * Decision reel:
@@ -37,9 +38,13 @@ export function MedyExpandGallery() {
   /** Soft-pause cruise while pointer is over the reel */
   const pausedByHoverRef = useRef(false);
   const offsetRef = useRef(0);
+  const displayOffsetRef = useRef(0);
   const maxOffsetRef = useRef(0);
   const userVelocityRef = useRef(0);
   const targetOffsetRef = useRef<number | null>(null);
+  const userEngagedUntilRef = useRef(0);
+  const resumeTimerRef = useRef(0);
+  const lastFocusSyncRef = useRef(0);
   const didDragRef = useRef(false);
   const dragRef = useRef({
     active: false,
@@ -57,15 +62,31 @@ export function MedyExpandGallery() {
   const [expandDir, setExpandDir] = useState<1 | -1>(1);
   const [pointerIn, setPointerIn] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [interacting, setInteracting] = useState(false);
 
   focusRef.current = focus;
   expandedRef.current = expanded !== null;
 
-  const syncFocus = useCallback((offset: number, track: HTMLElement) => {
-    const center = offset + track.clientWidth / 2;
+  const markUserEngaged = useCallback(() => {
+    userEngagedUntilRef.current = performance.now() + 700;
+    setInteracting(true);
+  }, []);
+
+  const syncFocus = useCallback((offset: number) => {
+    const viewport = trackRef.current;
+    const inner = innerRef.current;
+    if (!viewport || !inner) return;
+
+    if (Math.abs(userVelocityRef.current) > 55) {
+      const now = performance.now();
+      if (now - lastFocusSyncRef.current < 140) return;
+      lastFocusSyncRef.current = now;
+    }
+
+    const center = offset + viewport.clientWidth / 2;
     let best = 0;
     let bestDist = Infinity;
-    track.querySelectorAll<HTMLElement>("[data-reel-index]").forEach((el) => {
+    inner.querySelectorAll<HTMLElement>("[data-reel-index]").forEach((el) => {
       const mid = el.offsetLeft + el.offsetWidth / 2;
       const d = Math.abs(mid - center);
       if (d < bestDist) {
@@ -85,20 +106,28 @@ export function MedyExpandGallery() {
     if (!track || !inner) return;
     maxOffsetRef.current = Math.max(0, inner.scrollWidth - track.clientWidth);
     offsetRef.current = Math.min(offsetRef.current, maxOffsetRef.current);
-    inner.style.transform = `translate3d(${-offsetRef.current}px, 0, 0)`;
+    displayOffsetRef.current = offsetRef.current;
+    inner.style.transform = `translate3d(${-displayOffsetRef.current}px, 0, 0)`;
   }, []);
 
-  const applyOffset = useCallback(
-    (offset: number) => {
-      const track = trackRef.current;
+  const paintOffset = useCallback(
+    (offset: number, snap = false) => {
       const inner = innerRef.current;
-      if (!track || !inner) return;
+      if (!inner) return;
       const next = Math.max(0, Math.min(maxOffsetRef.current, offset));
       offsetRef.current = next;
-      inner.style.transform = `translate3d(${-next}px, 0, 0)`;
-      syncFocus(next, inner);
+      if (snap) displayOffsetRef.current = next;
+      inner.style.transform = `translate3d(${-displayOffsetRef.current}px, 0, 0)`;
+      syncFocus(next);
     },
     [syncFocus],
+  );
+
+  const applyOffset = useCallback(
+    (offset: number, snap = false) => {
+      paintOffset(offset, snap);
+    },
+    [paintOffset],
   );
 
   const scrollToIndex = useCallback((index: number) => {
@@ -149,9 +178,18 @@ export function MedyExpandGallery() {
       e.preventDefault();
       e.stopPropagation();
       targetOffsetRef.current = null;
+      markUserEngaged();
       const delta =
         Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-      userVelocityRef.current += delta * WHEEL_GAIN;
+      const impulse = delta * 0.9;
+      const next = Math.max(
+        0,
+        Math.min(maxOffsetRef.current, offsetRef.current + impulse),
+      );
+      paintOffset(next, true);
+      const blended = delta * WHEEL_GAIN;
+      userVelocityRef.current =
+        userVelocityRef.current * 0.55 + blended;
       userVelocityRef.current = Math.max(
         -MAX_USER_VELOCITY,
         Math.min(MAX_USER_VELOCITY, userVelocityRef.current),
@@ -170,33 +208,47 @@ export function MedyExpandGallery() {
 
       if (dragRef.current.active) return;
 
+      if (performance.now() > userEngagedUntilRef.current) {
+        setInteracting(false);
+      }
+
       if (targetOffsetRef.current !== null) {
         const target = targetOffsetRef.current;
         const dist = target - offsetRef.current;
         if (Math.abs(dist) < 0.35) {
-          applyOffset(target);
+          applyOffset(target, true);
           targetOffsetRef.current = null;
           userVelocityRef.current = 0;
         } else {
-          applyOffset(offsetRef.current + dist * (1 - Math.exp(-5.5 * dt)));
+          applyOffset(offsetRef.current + dist * (1 - Math.exp(-4.2 * dt)), true);
         }
         return;
       }
 
+      const userEngaged =
+        performance.now() < userEngagedUntilRef.current ||
+        Math.abs(userVelocityRef.current) > 8;
+
       const autoSpeed =
         inViewRef.current &&
         !expandedRef.current &&
-        !pausedByHoverRef.current
+        !pausedByHoverRef.current &&
+        !userEngaged
           ? AUTO_SPEED
           : 0;
 
       userVelocityRef.current *= Math.exp(-GLIDE_FRICTION * dt);
-      if (Math.abs(userVelocityRef.current) < 0.25) {
+      if (Math.abs(userVelocityRef.current) < 0.2) {
         userVelocityRef.current = 0;
       }
 
       const dx = autoSpeed * dt + userVelocityRef.current * dt;
-      if (Math.abs(dx) < 0.005 && autoSpeed === 0 && userVelocityRef.current === 0) {
+      if (
+        Math.abs(dx) < 0.005 &&
+        autoSpeed === 0 &&
+        userVelocityRef.current === 0 &&
+        Math.abs(offsetRef.current - displayOffsetRef.current) < 0.2
+      ) {
         return;
       }
 
@@ -205,29 +257,48 @@ export function MedyExpandGallery() {
       if (autoSpeed > 0 && next >= max - 0.5) next = 0;
       if (next < 0) next = 0;
       if (next > max) next = max;
-      applyOffset(next);
+      offsetRef.current = next;
+
+      const snapDisplay = dragRef.current.active || userEngaged;
+      if (snapDisplay) {
+        displayOffsetRef.current = next;
+      } else {
+        displayOffsetRef.current +=
+          (next - displayOffsetRef.current) * (1 - Math.exp(-14 * dt));
+      }
+
+      const innerEl = innerRef.current;
+      if (innerEl) {
+        innerEl.style.transform = `translate3d(${-displayOffsetRef.current}px, 0, 0)`;
+      }
+      syncFocus(next);
     };
 
     raf = requestAnimationFrame(tick);
     return () => {
+      window.clearTimeout(resumeTimerRef.current);
       ro.disconnect();
       io.disconnect();
       cancelAnimationFrame(raf);
       section.removeEventListener("wheel", onWheel, { capture: true });
     };
-  }, [reduced, applyOffset, measureTrack]);
+  }, [reduced, applyOffset, measureTrack, markUserEngaged, syncFocus, paintOffset]);
 
   function pauseDrift() {
+    window.clearTimeout(resumeTimerRef.current);
     pausedByHoverRef.current = true;
     setPointerIn(true);
   }
 
   function resumeDrift() {
+    if (performance.now() < userEngagedUntilRef.current) return;
+    if (Math.abs(userVelocityRef.current) > 12) return;
     pausedByHoverRef.current = false;
     setPointerIn(false);
   }
 
   function onTrackPointerEnter() {
+    window.clearTimeout(resumeTimerRef.current);
     pauseDrift();
   }
 
@@ -235,7 +306,10 @@ export function MedyExpandGallery() {
     if (dragRef.current.active) return;
     const next = e.relatedTarget as Node | null;
     if (next && trackRef.current?.contains(next)) return;
-    resumeDrift();
+    window.clearTimeout(resumeTimerRef.current);
+    resumeTimerRef.current = window.setTimeout(() => {
+      if (!dragRef.current.active) resumeDrift();
+    }, RESUME_DELAY_MS);
   }
 
   function onTrackPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
@@ -244,6 +318,7 @@ export function MedyExpandGallery() {
     if (!track) return;
 
     pauseDrift();
+    markUserEngaged();
     targetOffsetRef.current = null;
     dragRef.current = {
       active: true,
@@ -277,7 +352,7 @@ export function MedyExpandGallery() {
       0,
       Math.min(maxOffsetRef.current, d.startScroll - dx),
     );
-    applyOffset(next);
+    applyOffset(next, true);
 
     const now = performance.now();
     const dt = Math.max(now - d.lastT, 1);
@@ -303,8 +378,9 @@ export function MedyExpandGallery() {
     if (d.dragged) {
       userVelocityRef.current = Math.max(
         -MAX_USER_VELOCITY,
-        Math.min(MAX_USER_VELOCITY, -velocity * 0.42),
+        Math.min(MAX_USER_VELOCITY, -velocity * 0.32),
       );
+      markUserEngaged();
       didDragRef.current = true;
       window.setTimeout(() => {
         didDragRef.current = false;
@@ -538,7 +614,9 @@ export function MedyExpandGallery() {
                     opacity: isFocus ? 1 : 0.52,
                     transform: isFocus ? "scale(1)" : "scale(0.94)",
                     transformOrigin: "center center",
-                    transition: "opacity 0.45s ease, transform 0.45s ease",
+                    transition: interacting
+                      ? "none"
+                      : "opacity 0.45s ease, transform 0.45s ease",
                     overflow: "visible",
                     pointerEvents: "none",
                   }}
@@ -568,7 +646,7 @@ export function MedyExpandGallery() {
                   style={{
                     marginTop: 2,
                     opacity: isFocus ? 0.7 : 0.35,
-                    transition: "opacity 0.3s",
+                    transition: interacting ? "none" : "opacity 0.3s",
                     pointerEvents: "none",
                   }}
                 >
