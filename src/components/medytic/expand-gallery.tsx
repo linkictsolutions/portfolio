@@ -16,13 +16,12 @@ import { medyAccent, medyScreens, type MedyScreen } from "@/content/medytic";
 const REEL = medyScreens.filter((s) => s.fit !== "panel");
 const PHONE_W = 275;
 const AUTO_SPEED = 48;
-/** User wheel / flick friction per second — lower = longer, gentler glide */
-const GLIDE_FRICTION = 1.45;
-const WHEEL_GAIN = 0.34;
-const WHEEL_BLEND = 0.78;
-const MAX_USER_VELOCITY = 480;
+const GLIDE_FRICTION = 1.35;
+const WHEEL_GAIN = 0.38;
+const WHEEL_BLEND = 0.72;
+const MAX_USER_VELOCITY = 520;
 const RESUME_DELAY_MS = 420;
-const FOCUS_SYNC_MS = 160;
+const FOCUS_SETTLE_MS = 220;
 
 /**
  * Decision reel:
@@ -46,13 +45,14 @@ export function MedyExpandGallery() {
   const targetOffsetRef = useRef<number | null>(null);
   const userEngagedUntilRef = useRef(0);
   const resumeTimerRef = useRef(0);
-  const lastFocusSyncRef = useRef(0);
+  const focusSettleTimerRef = useRef(0);
   const didDragRef = useRef(false);
   const dragRef = useRef({
     active: false,
     pointerId: -1,
     startX: 0,
     startScroll: 0,
+    offset: 0,
     dragged: false,
     lastX: 0,
     lastT: 0,
@@ -70,26 +70,27 @@ export function MedyExpandGallery() {
   focusRef.current = focus;
   expandedRef.current = expanded !== null;
 
-  const markUserEngaged = useCallback(() => {
-    userEngagedUntilRef.current = performance.now() + 900;
+  const markUserEngaged = useCallback((ms = 900) => {
+    userEngagedUntilRef.current = performance.now() + ms;
     if (!interactingRef.current) {
       interactingRef.current = true;
       setInteracting(true);
     }
   }, []);
 
-  const syncFocus = useCallback((offset: number, force = false) => {
+  const isMoving = useCallback(() => {
+    return (
+      dragRef.current.active ||
+      Math.abs(userVelocityRef.current) > 5 ||
+      performance.now() < userEngagedUntilRef.current
+    );
+  }, []);
+
+  const computeFocus = useCallback((offset: number) => {
     const viewport = trackRef.current;
     const inner = innerRef.current;
-    if (!viewport || !inner) return;
+    if (!viewport || !inner) return focusRef.current;
 
-    const moving =
-      dragRef.current.active || Math.abs(userVelocityRef.current) > 10;
-    const now = performance.now();
-    if (!force && moving && now - lastFocusSyncRef.current < FOCUS_SYNC_MS) {
-      return;
-    }
-    lastFocusSyncRef.current = now;
     const center = offset + viewport.clientWidth / 2;
     let best = 0;
     let bestDist = Infinity;
@@ -101,13 +102,36 @@ export function MedyExpandGallery() {
         best = Number(el.dataset.reelIndex);
       }
     });
+    return best;
+  }, []);
+
+  const commitFocus = useCallback((offset: number) => {
+    const best = computeFocus(offset);
     if (best !== focusRef.current) {
       setFocus(best);
       focusRef.current = best;
     }
-  }, []);
+  }, [computeFocus]);
+
+  const scheduleFocusSettle = useCallback(
+    (offset: number) => {
+      window.clearTimeout(focusSettleTimerRef.current);
+      focusSettleTimerRef.current = window.setTimeout(() => {
+        if (isMoving()) return;
+        commitFocus(offset);
+      }, FOCUS_SETTLE_MS);
+    },
+    [commitFocus, isMoving],
+  );
 
   const measureTrack = useCallback(() => {
+    if (
+      dragRef.current.active ||
+      interactingRef.current ||
+      Math.abs(userVelocityRef.current) > 8
+    ) {
+      return;
+    }
     const track = trackRef.current;
     const inner = innerRef.current;
     if (!track || !inner) return;
@@ -117,25 +141,14 @@ export function MedyExpandGallery() {
     inner.style.transform = `translate3d(${-displayOffsetRef.current}px, 0, 0)`;
   }, []);
 
-  const paintOffset = useCallback(
-    (offset: number, snap = false, sync = true) => {
-      const inner = innerRef.current;
-      if (!inner) return;
-      const next = Math.max(0, Math.min(maxOffsetRef.current, offset));
-      offsetRef.current = next;
-      if (snap) displayOffsetRef.current = next;
-      inner.style.transform = `translate3d(${-displayOffsetRef.current}px, 0, 0)`;
-      if (sync) syncFocus(next);
-    },
-    [syncFocus],
-  );
-
-  const applyOffset = useCallback(
-    (offset: number, snap = false, sync = true) => {
-      paintOffset(offset, snap, sync);
-    },
-    [paintOffset],
-  );
+  const paintOffset = useCallback((offset: number) => {
+    const inner = innerRef.current;
+    if (!inner) return;
+    const next = Math.max(0, Math.min(maxOffsetRef.current, offset));
+    offsetRef.current = next;
+    displayOffsetRef.current = next;
+    inner.style.transform = `translate3d(${-next}px, 0, 0)`;
+  }, []);
 
   const scrollToIndex = useCallback((index: number) => {
     const track = trackRef.current;
@@ -205,8 +218,13 @@ export function MedyExpandGallery() {
       raf = requestAnimationFrame(tick);
       const dt = Math.min(now - last, 32) / 1000;
       last = now;
+      const innerEl = innerRef.current;
+      if (!innerEl) return;
 
-      if (dragRef.current.active) return;
+      if (dragRef.current.active) {
+        paintOffset(dragRef.current.offset);
+        return;
+      }
 
       if (performance.now() > userEngagedUntilRef.current) {
         if (interactingRef.current) {
@@ -219,11 +237,12 @@ export function MedyExpandGallery() {
         const target = targetOffsetRef.current;
         const dist = target - offsetRef.current;
         if (Math.abs(dist) < 0.35) {
-          applyOffset(target, true);
+          paintOffset(target);
           targetOffsetRef.current = null;
           userVelocityRef.current = 0;
+          commitFocus(target);
         } else {
-          applyOffset(offsetRef.current + dist * (1 - Math.exp(-4.2 * dt)), true);
+          paintOffset(offsetRef.current + dist * (1 - Math.exp(-4.2 * dt)));
         }
         return;
       }
@@ -241,7 +260,7 @@ export function MedyExpandGallery() {
           : 0;
 
       userVelocityRef.current *= Math.exp(-GLIDE_FRICTION * dt);
-      if (Math.abs(userVelocityRef.current) < 0.2) {
+      if (Math.abs(userVelocityRef.current) < 0.15) {
         userVelocityRef.current = 0;
       }
 
@@ -249,9 +268,9 @@ export function MedyExpandGallery() {
       if (
         Math.abs(dx) < 0.005 &&
         autoSpeed === 0 &&
-        userVelocityRef.current === 0 &&
-        Math.abs(offsetRef.current - displayOffsetRef.current) < 0.2
+        userVelocityRef.current === 0
       ) {
+        if (!userEngaged) scheduleFocusSettle(offsetRef.current);
         return;
       }
 
@@ -260,31 +279,24 @@ export function MedyExpandGallery() {
       if (autoSpeed > 0 && next >= max - 0.5) next = 0;
       if (next < 0) next = 0;
       if (next > max) next = max;
-      offsetRef.current = next;
 
-      if (userEngaged) {
-        displayOffsetRef.current = next;
-      } else {
-        displayOffsetRef.current +=
-          (next - displayOffsetRef.current) * (1 - Math.exp(-12 * dt));
-      }
+      paintOffset(next);
 
-      const innerEl = innerRef.current;
-      if (innerEl) {
-        innerEl.style.transform = `translate3d(${-displayOffsetRef.current}px, 0, 0)`;
+      if (!userEngaged && Math.abs(userVelocityRef.current) < 1) {
+        scheduleFocusSettle(next);
       }
-      syncFocus(next, !userEngaged && Math.abs(userVelocityRef.current) < 2);
     };
 
     raf = requestAnimationFrame(tick);
     return () => {
       window.clearTimeout(resumeTimerRef.current);
+      window.clearTimeout(focusSettleTimerRef.current);
       ro.disconnect();
       io.disconnect();
       cancelAnimationFrame(raf);
       section.removeEventListener("wheel", onWheel, { capture: true });
     };
-  }, [reduced, applyOffset, measureTrack, markUserEngaged, syncFocus, paintOffset]);
+  }, [reduced, measureTrack, markUserEngaged, paintOffset, commitFocus, scheduleFocusSettle]);
 
   function pauseDrift() {
     window.clearTimeout(resumeTimerRef.current);
@@ -320,75 +332,82 @@ export function MedyExpandGallery() {
     if (!track) return;
 
     pauseDrift();
-    markUserEngaged();
+    markUserEngaged(1200);
     targetOffsetRef.current = null;
+    userVelocityRef.current = 0;
+    window.clearTimeout(focusSettleTimerRef.current);
+
     dragRef.current = {
       active: true,
       pointerId: e.pointerId,
       startX: e.clientX,
       startScroll: offsetRef.current,
+      offset: offsetRef.current,
       dragged: false,
       lastX: e.clientX,
       lastT: performance.now(),
       velocity: 0,
     };
-    track.setPointerCapture(e.pointerId);
-  }
 
-  function onTrackPointerMove(e: ReactPointerEvent<HTMLDivElement>) {
-    const d = dragRef.current;
-    if (!d.active || e.pointerId !== d.pointerId) return;
+    const onMove = (ev: PointerEvent) => {
+      const d = dragRef.current;
+      if (!d.active || ev.pointerId !== d.pointerId) return;
 
-    const dx = e.clientX - d.startX;
-    if (!d.dragged && Math.abs(dx) < 6) return;
+      const dx = ev.clientX - d.startX;
+      if (!d.dragged && Math.abs(dx) < 4) return;
 
-    if (!d.dragged) {
-      d.dragged = true;
-      setDragging(true);
-    }
+      if (!d.dragged) {
+        d.dragged = true;
+        setDragging(true);
+      }
 
-    e.preventDefault();
-    userVelocityRef.current = 0;
-
-    const next = Math.max(
-      0,
-      Math.min(maxOffsetRef.current, d.startScroll - dx),
-    );
-    applyOffset(next, true, false);
-
-    const now = performance.now();
-    const dt = Math.max(now - d.lastT, 1);
-    const velocity = ((e.clientX - d.lastX) / dt) * 1000;
-    dragRef.current = {
-      ...d,
-      dragged: true,
-      lastX: e.clientX,
-      lastT: now,
-      velocity,
-    };
-  }
-
-  function onTrackPointerUp(e: ReactPointerEvent<HTMLDivElement>) {
-    const d = dragRef.current;
-    if (!d.active || e.pointerId !== d.pointerId) return;
-
-    trackRef.current?.releasePointerCapture(e.pointerId);
-    const velocity = d.velocity;
-    dragRef.current.active = false;
-    setDragging(false);
-
-    if (d.dragged) {
-      userVelocityRef.current = Math.max(
-        -MAX_USER_VELOCITY,
-        Math.min(MAX_USER_VELOCITY, -velocity * 0.28),
+      markUserEngaged(1200);
+      const now = performance.now();
+      const dt = Math.max(now - d.lastT, 1);
+      const velocity = ((ev.clientX - d.lastX) / dt) * 1000;
+      const next = Math.max(
+        0,
+        Math.min(maxOffsetRef.current, d.startScroll - dx),
       );
-      markUserEngaged();
-      syncFocus(offsetRef.current, true);
-      didDragRef.current = true;
-      window.setTimeout(() => {
-        didDragRef.current = false;
-      }, 0);
-    }
+      dragRef.current = {
+        ...d,
+        offset: next,
+        dragged: true,
+        lastX: ev.clientX,
+        lastT: now,
+        velocity,
+      };
+    };
+
+    const onUp = (ev: PointerEvent) => {
+      const d = dragRef.current;
+      if (!d.active || ev.pointerId !== d.pointerId) return;
+
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+
+      const velocity = d.velocity;
+      dragRef.current.active = false;
+      setDragging(false);
+
+      if (d.dragged) {
+        userVelocityRef.current = Math.max(
+          -MAX_USER_VELOCITY,
+          Math.min(MAX_USER_VELOCITY, -velocity * 0.32),
+        );
+        markUserEngaged(1400);
+        scheduleFocusSettle(d.offset);
+        didDragRef.current = true;
+        window.setTimeout(() => {
+          didDragRef.current = false;
+        }, 0);
+      }
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
   }
   useEffect(() => {
     if (!expanded) return;
@@ -475,13 +494,13 @@ export function MedyExpandGallery() {
             </p>
           </div>
 
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="sync" initial={false}>
             <motion.div
               key={active.id}
-              initial={reduced ? false : { opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={reduced ? undefined : { opacity: 0 }}
-              transition={{ duration: 0.25 }}
+              initial={reduced ? false : { opacity: 0.72 }}
+              animate={{ opacity: 1 }}
+              exit={reduced ? undefined : { opacity: 0.72 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
             >
               <div
                 style={{
@@ -559,9 +578,6 @@ export function MedyExpandGallery() {
           onPointerEnter={onTrackPointerEnter}
           onPointerLeave={onTrackPointerLeave}
           onPointerDown={onTrackPointerDown}
-          onPointerMove={onTrackPointerMove}
-          onPointerUp={onTrackPointerUp}
-          onPointerCancel={onTrackPointerUp}
           style={{
             position: "relative",
             overflow: "hidden",
@@ -584,6 +600,7 @@ export function MedyExpandGallery() {
           >
           {REEL.map((s, i) => {
             const isFocus = i === focus;
+            const motionLocked = interacting || dragging;
             return (
               <button
                 key={s.id}
@@ -617,10 +634,9 @@ export function MedyExpandGallery() {
                     opacity: isFocus ? 1 : 0.52,
                     transform: isFocus ? "scale(1)" : "scale(0.94)",
                     transformOrigin: "center center",
-                    transition:
-                      interacting || dragging
-                        ? "none"
-                        : "opacity 0.45s ease, transform 0.45s ease",
+                    transition: motionLocked
+                      ? "none"
+                      : "opacity 0.35s ease, transform 0.35s ease",
                     overflow: "visible",
                     pointerEvents: "none",
                   }}
