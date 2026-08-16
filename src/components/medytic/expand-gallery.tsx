@@ -18,9 +18,11 @@ const PHONE_W = 275;
 const AUTO_SPEED = 48;
 /** User wheel / flick friction per second — lower = longer, gentler glide */
 const GLIDE_FRICTION = 1.45;
-const WHEEL_GAIN = 0.28;
-const MAX_USER_VELOCITY = 520;
-const RESUME_DELAY_MS = 320;
+const WHEEL_GAIN = 0.34;
+const WHEEL_BLEND = 0.78;
+const MAX_USER_VELOCITY = 480;
+const RESUME_DELAY_MS = 420;
+const FOCUS_SYNC_MS = 160;
 
 /**
  * Decision reel:
@@ -63,26 +65,31 @@ export function MedyExpandGallery() {
   const [pointerIn, setPointerIn] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [interacting, setInteracting] = useState(false);
+  const interactingRef = useRef(false);
 
   focusRef.current = focus;
   expandedRef.current = expanded !== null;
 
   const markUserEngaged = useCallback(() => {
-    userEngagedUntilRef.current = performance.now() + 700;
-    setInteracting(true);
+    userEngagedUntilRef.current = performance.now() + 900;
+    if (!interactingRef.current) {
+      interactingRef.current = true;
+      setInteracting(true);
+    }
   }, []);
 
-  const syncFocus = useCallback((offset: number) => {
+  const syncFocus = useCallback((offset: number, force = false) => {
     const viewport = trackRef.current;
     const inner = innerRef.current;
     if (!viewport || !inner) return;
 
-    if (Math.abs(userVelocityRef.current) > 55) {
-      const now = performance.now();
-      if (now - lastFocusSyncRef.current < 140) return;
-      lastFocusSyncRef.current = now;
+    const moving =
+      dragRef.current.active || Math.abs(userVelocityRef.current) > 10;
+    const now = performance.now();
+    if (!force && moving && now - lastFocusSyncRef.current < FOCUS_SYNC_MS) {
+      return;
     }
-
+    lastFocusSyncRef.current = now;
     const center = offset + viewport.clientWidth / 2;
     let best = 0;
     let bestDist = Infinity;
@@ -111,21 +118,21 @@ export function MedyExpandGallery() {
   }, []);
 
   const paintOffset = useCallback(
-    (offset: number, snap = false) => {
+    (offset: number, snap = false, sync = true) => {
       const inner = innerRef.current;
       if (!inner) return;
       const next = Math.max(0, Math.min(maxOffsetRef.current, offset));
       offsetRef.current = next;
       if (snap) displayOffsetRef.current = next;
       inner.style.transform = `translate3d(${-displayOffsetRef.current}px, 0, 0)`;
-      syncFocus(next);
+      if (sync) syncFocus(next);
     },
     [syncFocus],
   );
 
   const applyOffset = useCallback(
-    (offset: number, snap = false) => {
-      paintOffset(offset, snap);
+    (offset: number, snap = false, sync = true) => {
+      paintOffset(offset, snap, sync);
     },
     [paintOffset],
   );
@@ -181,15 +188,8 @@ export function MedyExpandGallery() {
       markUserEngaged();
       const delta =
         Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-      const impulse = delta * 0.9;
-      const next = Math.max(
-        0,
-        Math.min(maxOffsetRef.current, offsetRef.current + impulse),
-      );
-      paintOffset(next, true);
-      const blended = delta * WHEEL_GAIN;
       userVelocityRef.current =
-        userVelocityRef.current * 0.55 + blended;
+        userVelocityRef.current * WHEEL_BLEND + delta * WHEEL_GAIN;
       userVelocityRef.current = Math.max(
         -MAX_USER_VELOCITY,
         Math.min(MAX_USER_VELOCITY, userVelocityRef.current),
@@ -209,7 +209,10 @@ export function MedyExpandGallery() {
       if (dragRef.current.active) return;
 
       if (performance.now() > userEngagedUntilRef.current) {
-        setInteracting(false);
+        if (interactingRef.current) {
+          interactingRef.current = false;
+          setInteracting(false);
+        }
       }
 
       if (targetOffsetRef.current !== null) {
@@ -227,7 +230,7 @@ export function MedyExpandGallery() {
 
       const userEngaged =
         performance.now() < userEngagedUntilRef.current ||
-        Math.abs(userVelocityRef.current) > 8;
+        Math.abs(userVelocityRef.current) > 4;
 
       const autoSpeed =
         inViewRef.current &&
@@ -259,19 +262,18 @@ export function MedyExpandGallery() {
       if (next > max) next = max;
       offsetRef.current = next;
 
-      const snapDisplay = dragRef.current.active || userEngaged;
-      if (snapDisplay) {
+      if (userEngaged) {
         displayOffsetRef.current = next;
       } else {
         displayOffsetRef.current +=
-          (next - displayOffsetRef.current) * (1 - Math.exp(-14 * dt));
+          (next - displayOffsetRef.current) * (1 - Math.exp(-12 * dt));
       }
 
       const innerEl = innerRef.current;
       if (innerEl) {
         innerEl.style.transform = `translate3d(${-displayOffsetRef.current}px, 0, 0)`;
       }
-      syncFocus(next);
+      syncFocus(next, !userEngaged && Math.abs(userVelocityRef.current) < 2);
     };
 
     raf = requestAnimationFrame(tick);
@@ -352,7 +354,7 @@ export function MedyExpandGallery() {
       0,
       Math.min(maxOffsetRef.current, d.startScroll - dx),
     );
-    applyOffset(next, true);
+    applyOffset(next, true, false);
 
     const now = performance.now();
     const dt = Math.max(now - d.lastT, 1);
@@ -378,9 +380,10 @@ export function MedyExpandGallery() {
     if (d.dragged) {
       userVelocityRef.current = Math.max(
         -MAX_USER_VELOCITY,
-        Math.min(MAX_USER_VELOCITY, -velocity * 0.32),
+        Math.min(MAX_USER_VELOCITY, -velocity * 0.28),
       );
       markUserEngaged();
+      syncFocus(offsetRef.current, true);
       didDragRef.current = true;
       window.setTimeout(() => {
         didDragRef.current = false;
@@ -614,9 +617,10 @@ export function MedyExpandGallery() {
                     opacity: isFocus ? 1 : 0.52,
                     transform: isFocus ? "scale(1)" : "scale(0.94)",
                     transformOrigin: "center center",
-                    transition: interacting
-                      ? "none"
-                      : "opacity 0.45s ease, transform 0.45s ease",
+                    transition:
+                      interacting || dragging
+                        ? "none"
+                        : "opacity 0.45s ease, transform 0.45s ease",
                     overflow: "visible",
                     pointerEvents: "none",
                   }}
@@ -646,7 +650,8 @@ export function MedyExpandGallery() {
                   style={{
                     marginTop: 2,
                     opacity: isFocus ? 0.7 : 0.35,
-                    transition: interacting ? "none" : "opacity 0.3s",
+                    transition:
+                      interacting || dragging ? "none" : "opacity 0.3s",
                     pointerEvents: "none",
                   }}
                 >
